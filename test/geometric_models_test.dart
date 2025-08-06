@@ -283,6 +283,7 @@ void main() {
       test('should provide meaningful description', () {
         final p1 = GPoint.withCoordinates(0.0, 0.0);
         final p2 = GPoint.withCoordinates(10.0, 10.0);
+        // TODO check validity of this test
         final constraint = Constraint(ConstraintType.interLL, [p1, p2]);
 
         expect(constraint.type, equals(ConstraintType.interLL));
