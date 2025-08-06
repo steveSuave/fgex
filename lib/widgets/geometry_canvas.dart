@@ -1,17 +1,9 @@
-// lib/widgets/geometry_canvas.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_geometry_expert/widgets/geometry_painter.dart';
-import 'dart:math' as math;
 import '../models/models.dart';
 import '../services/geometry_engine.dart';
 
-enum ConstructionMode { 
-  select, 
-  point, 
-  line, 
-  circle, 
-  intersection 
-}
+enum ConstructionMode { select, point, line, circle, intersection }
 
 class GeometryCanvas extends StatefulWidget {
   @override
@@ -23,7 +15,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   ConstructionMode mode = ConstructionMode.select;
   List<GPoint> selectedPoints = [];
   GPoint? hoveredPoint;
-  
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -52,7 +44,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       ],
     );
   }
-  
+
   Widget _buildToolbar() {
     return Container(
       height: 60,
@@ -60,7 +52,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       child: Row(
         children: [
           _toolButton(Icons.mouse, ConstructionMode.select, 'Select'),
-          _toolButton(Icons.circle_outlined, ConstructionMode.point, 'Point'),  
+          _toolButton(Icons.circle_outlined, ConstructionMode.point, 'Point'),
           _toolButton(Icons.linear_scale, ConstructionMode.line, 'Line'),
           _toolButton(Icons.circle, ConstructionMode.circle, 'Circle'),
           _toolButton(Icons.close, ConstructionMode.intersection, 'Intersect'),
@@ -79,7 +71,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       ),
     );
   }
-  
+
   Widget _toolButton(IconData icon, ConstructionMode toolMode, String tooltip) {
     return Tooltip(
       message: tooltip,
@@ -95,12 +87,15 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
             color: mode == toolMode ? Colors.blue[200] : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: mode == toolMode ? Colors.blue[800] : Colors.grey[700]),
+          child: Icon(
+            icon,
+            color: mode == toolMode ? Colors.blue[800] : Colors.grey[700],
+          ),
         ),
       ),
     );
   }
-  
+
   Widget _buildStatusBar() {
     String status = 'Ready';
     switch (mode) {
@@ -108,14 +103,14 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         status = 'Click to create a point';
         break;
       case ConstructionMode.line:
-        status = selectedPoints.isEmpty 
-          ? 'Select first point for line'
-          : 'Select second point for line';
+        status = selectedPoints.isEmpty
+            ? 'Select first point for line'
+            : 'Select second point for line';
         break;
       case ConstructionMode.circle:
         status = selectedPoints.isEmpty
-          ? 'Select center point for circle'
-          : 'Select point on circle';
+            ? 'Select center point for circle'
+            : 'Select point on circle';
         break;
       case ConstructionMode.intersection:
         status = 'Select two objects to intersect';
@@ -124,7 +119,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         status = 'Select mode - click objects to select';
         break;
     }
-    
+
     return Container(
       height: 30,
       color: Colors.grey[100],
@@ -137,10 +132,10 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       ),
     );
   }
-  
+
   void _handleTapDown(TapDownDetails details) {
     final position = details.localPosition;
-    
+
     switch (mode) {
       case ConstructionMode.point:
         _createPoint(position);
@@ -159,11 +154,14 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         break;
     }
   }
-  
+
   void _handlePanUpdate(DragUpdateDetails details) {
     if (mode == ConstructionMode.select) {
       // Find hovered point for visual feedback
-      final point = engine.selectPointAt(details.localPosition.dx, details.localPosition.dy);
+      final point = engine.selectPointAt(
+        details.localPosition.dx,
+        details.localPosition.dy,
+      );
       if (point != hoveredPoint) {
         setState(() {
           hoveredPoint = point;
@@ -171,18 +169,18 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       }
     }
   }
-  
+
   void _createPoint(Offset position) {
     final point = engine.createFreePoint(position.dx, position.dy);
     setState(() {});
   }
-  
+
   void _handleLineConstruction(Offset position) {
     final point = engine.selectPointAt(position.dx, position.dy);
-    
+
     if (point != null) {
       selectedPoints.add(point);
-      
+
       if (selectedPoints.length == 2) {
         engine.createLine(selectedPoints[0], selectedPoints[1]);
         selectedPoints.clear();
@@ -193,16 +191,16 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       engine.createLine(selectedPoints[0], newPoint);
       selectedPoints.clear();
     }
-    
+
     setState(() {});
   }
-  
+
   void _handleCircleConstruction(Offset position) {
     final point = engine.selectPointAt(position.dx, position.dy);
-    
+
     if (point != null) {
       selectedPoints.add(point);
-      
+
       if (selectedPoints.length == 2) {
         engine.createCircle(selectedPoints[0], selectedPoints[1]);
         selectedPoints.clear();
@@ -213,10 +211,10 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       engine.createCircle(selectedPoints[0], newPoint);
       selectedPoints.clear();
     }
-    
+
     setState(() {});
   }
-  
+
   void _handleSelection(Offset position) {
     final point = engine.selectPointAt(position.dx, position.dy);
     if (point != null) {
@@ -229,7 +227,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       });
     }
   }
-  
+
   void _handleIntersection(Offset position) {
     // Simplified intersection - just line-line for now
     if (engine.lines.length >= 2) {
