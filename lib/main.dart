@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'widgets/geometry_canvas.dart';
 
 void main() {
-  runApp(GeometryExpertApp());
+  runApp(const GeometryExpertApp());
 }
 
 class GeometryExpertApp extends StatelessWidget {
+  const GeometryExpertApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -15,17 +17,19 @@ class GeometryExpertApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: GeometryExpertHome(),
+      home: const GeometryExpertHome(),
     );
   }
 }
 
 class GeometryExpertHome extends StatelessWidget {
+  const GeometryExpertHome({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Flutter Geometry Expert MVP'),
+        title: const Text('Flutter Geometry Expert MVP'),
         backgroundColor: Colors.blue[600],
       ),
       body: GeometryCanvas(),

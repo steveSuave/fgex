@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_geometry_expert/widgets/geometry_painter.dart';
 import '../models/models.dart';
 import '../services/geometry_engine.dart';
+import '../constants/geometry_constants.dart';
+import '../exceptions/geometry_exceptions.dart';
 
 enum ConstructionMode { select, point, line, circle, intersection }
 
 class GeometryCanvas extends StatefulWidget {
+  const GeometryCanvas({super.key});
+
   @override
-  _GeometryCanvasState createState() => _GeometryCanvasState();
+  State<GeometryCanvas> createState() => _GeometryCanvasState();
 }
 
 class _GeometryCanvasState extends State<GeometryCanvas> {
@@ -47,7 +51,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
 
   Widget _buildToolbar() {
     return Container(
-      height: 60,
+      height: GeometryConstants.toolbarHeight,
       color: Colors.grey[200],
       child: Row(
         children: [
@@ -81,8 +85,8 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
           selectedPoints.clear();
         }),
         child: Container(
-          width: 50,
-          height: 50,
+          width: GeometryConstants.toolButtonSize,
+          height: GeometryConstants.toolButtonSize,
           decoration: BoxDecoration(
             color: mode == toolMode ? Colors.blue[200] : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
@@ -121,13 +125,16 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     }
 
     return Container(
-      height: 30,
+      height: GeometryConstants.statusBarHeight,
       color: Colors.grey[100],
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 12),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(status, style: TextStyle(fontSize: 12)),
+          child: Text(
+            status,
+            style: TextStyle(fontSize: GeometryConstants.statusFontSize),
+          ),
         ),
       ),
     );
@@ -171,8 +178,12 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _createPoint(Offset position) {
-    final point = engine.createFreePoint(position.dx, position.dy);
-    setState(() {});
+    try {
+      engine.createFreePoint(position.dx, position.dy);
+      setState(() {});
+    } on GeometryException catch (e) {
+      _showError('Error creating point: ${e.message}');
+    }
   }
 
   void _handleLineConstruction(Offset position) {
@@ -182,14 +193,24 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       selectedPoints.add(point);
 
       if (selectedPoints.length == 2) {
-        engine.createLine(selectedPoints[0], selectedPoints[1]);
-        selectedPoints.clear();
+        try {
+          engine.createLine(selectedPoints[0], selectedPoints[1]);
+          selectedPoints.clear();
+        } on GeometryException catch (e) {
+          _showError('Error creating line: ${e.message}');
+          selectedPoints.clear();
+        }
       }
     } else if (selectedPoints.length == 1) {
       // Create new point and line
-      final newPoint = engine.createFreePoint(position.dx, position.dy);
-      engine.createLine(selectedPoints[0], newPoint);
-      selectedPoints.clear();
+      try {
+        final newPoint = engine.createFreePoint(position.dx, position.dy);
+        engine.createLine(selectedPoints[0], newPoint);
+        selectedPoints.clear();
+      } on GeometryException catch (e) {
+        _showError('Error creating line: ${e.message}');
+        selectedPoints.clear();
+      }
     }
 
     setState(() {});
@@ -202,14 +223,24 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       selectedPoints.add(point);
 
       if (selectedPoints.length == 2) {
-        engine.createCircle(selectedPoints[0], selectedPoints[1]);
-        selectedPoints.clear();
+        try {
+          engine.createCircle(selectedPoints[0], selectedPoints[1]);
+          selectedPoints.clear();
+        } on GeometryException catch (e) {
+          _showError('Error creating circle: ${e.message}');
+          selectedPoints.clear();
+        }
       }
     } else if (selectedPoints.length == 1) {
       // Create new point and circle
-      final newPoint = engine.createFreePoint(position.dx, position.dy);
-      engine.createCircle(selectedPoints[0], newPoint);
-      selectedPoints.clear();
+      try {
+        final newPoint = engine.createFreePoint(position.dx, position.dy);
+        engine.createCircle(selectedPoints[0], newPoint);
+        selectedPoints.clear();
+      } on GeometryException catch (e) {
+        _showError('Error creating circle: ${e.message}');
+        selectedPoints.clear();
+      }
     }
 
     setState(() {});
@@ -231,8 +262,31 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   void _handleIntersection(Offset position) {
     // Simplified intersection - just line-line for now
     if (engine.lines.length >= 2) {
-      engine.createIntersectionLL(engine.lines[0], engine.lines[1]);
-      setState(() {});
+      try {
+        final intersection = engine.createLineLineIntersection(
+          engine.lines[0],
+          engine.lines[1],
+        );
+        if (intersection == null) {
+          _showError('Lines are parallel - no intersection point');
+        } else {
+          setState(() {});
+        }
+      } on GeometryException catch (e) {
+        _showError('Error creating intersection: ${e.message}');
+      }
+    } else {
+      _showError('Need at least 2 lines to create intersection');
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 }

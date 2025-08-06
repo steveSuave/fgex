@@ -2,20 +2,22 @@
 import 'geometric_object.dart';
 import 'point.dart';
 
-class GLine extends GeometricObject {
-  static const int LLINE = 0; // Standard line
-  static const int CCLINE = 1; // Circle-circle radical axis
+enum LineType {
+  standard, // Standard line (formerly LLINE = 0)
+  radicalAxis, // Circle-circle radical axis (formerly CCLINE = 1)
+}
 
-  int lineType;
+class GLine extends GeometricObject {
+  LineType lineType;
   List<GPoint> points;
 
-  GLine(GPoint p1, GPoint p2, {this.lineType = LLINE})
+  GLine(GPoint p1, GPoint p2, {this.lineType = LineType.standard, int? id})
     : points = [p1, p2],
-      super(GeometricObject.LINE);
+      super(GeometricObjectType.line, id: id);
 
-  GLine.empty({this.lineType = LLINE})
+  GLine.empty({this.lineType = LineType.standard, int? id})
     : points = [],
-      super(GeometricObject.LINE);
+      super(GeometricObjectType.line, id: id);
 
   void addPoint(GPoint point) {
     if (!points.contains(point)) {

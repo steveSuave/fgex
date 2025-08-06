@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/geometry_engine.dart';
+import '../constants/geometry_constants.dart';
 
 // lib/widgets/geometry_painter.dart
 class GeometryPainter extends CustomPainter {
@@ -19,7 +20,7 @@ class GeometryPainter extends CustomPainter {
     // Draw lines
     final linePaint = Paint()
       ..color = Colors.black
-      ..strokeWidth = 1.5
+      ..strokeWidth = GeometryConstants.defaultStrokeWidth
       ..style = PaintingStyle.stroke;
 
     for (final line in engine.lines) {
@@ -33,7 +34,7 @@ class GeometryPainter extends CustomPainter {
     // Draw circles
     final circlePaint = Paint()
       ..color = Colors.black
-      ..strokeWidth = 1.5
+      ..strokeWidth = GeometryConstants.defaultStrokeWidth
       ..style = PaintingStyle.stroke;
 
     for (final circle in engine.circles) {
@@ -62,14 +63,14 @@ class GeometryPainter extends CustomPainter {
 
     for (final point in engine.points) {
       Paint paint = pointPaint;
-      double radius = 3;
+      double radius = GeometryConstants.pointRadius;
 
       if (point == hoveredPoint) {
         paint = hoveredPointPaint;
-        radius = 4;
+        radius = GeometryConstants.hoveredPointRadius;
       } else if (selectedPoints.contains(point)) {
         paint = selectedPointPaint;
-        radius = 4;
+        radius = GeometryConstants.selectedPointRadius;
       }
 
       canvas.drawCircle(Offset(point.x, point.y), radius, paint);
@@ -78,15 +79,26 @@ class GeometryPainter extends CustomPainter {
       final textPainter = TextPainter(
         text: TextSpan(
           text: point.toString(),
-          style: TextStyle(color: Colors.black, fontSize: 12),
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: GeometryConstants.pointNameFontSize,
+          ),
         ),
         textDirection: TextDirection.ltr,
       );
       textPainter.layout();
-      textPainter.paint(canvas, Offset(point.x + 8, point.y - 20));
+      textPainter.paint(
+        canvas,
+        Offset(
+          point.x + GeometryConstants.pointNameOffset,
+          point.y + GeometryConstants.pointNameVerticalOffset,
+        ),
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant GeometryPainter oldDelegate) {
+    return true;
+  }
 }

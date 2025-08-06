@@ -3,25 +3,28 @@ import 'dart:math' as math;
 import 'geometric_object.dart';
 import 'point.dart';
 
-class GCircle extends GeometricObject {
-  static const int PCIRCLE = 0; // Point circle (center + point on circle)
-  static const int RCIRCLE = 1; // Radius circle
-  static const int SCIRCLE = 2; // Special circle
+enum CircleType {
+  pointBased, // Point circle - center + point on circle (formerly PCIRCLE = 0)
+  radius, // Radius circle (formerly RCIRCLE = 1)
+  special, // Special circle (formerly SCIRCLE = 2)
+}
 
-  int circleType;
+class GCircle extends GeometricObject {
+  CircleType circleType;
   GPoint center;
   List<GPoint> points;
 
-  GCircle(this.center, {this.circleType = PCIRCLE})
+  GCircle(this.center, {this.circleType = CircleType.pointBased, int? id})
     : points = [],
-      super(GeometricObject.CIRCLE);
+      super(GeometricObjectType.circle, id: id);
 
   GCircle.withPoint(
     this.center,
     GPoint pointOnCircle, {
-    this.circleType = PCIRCLE,
+    this.circleType = CircleType.pointBased,
+    int? id,
   }) : points = [pointOnCircle],
-       super(GeometricObject.CIRCLE);
+       super(GeometricObjectType.circle, id: id);
 
   void addPoint(GPoint point) {
     if (!points.contains(point)) {
@@ -42,7 +45,7 @@ class GCircle extends GeometricObject {
   }
 
   String getDescription() {
-    return 'Circle ${center}';
+    return 'Circle $center';
   }
 
   @override
