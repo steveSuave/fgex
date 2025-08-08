@@ -7,7 +7,9 @@ import '../constants/geometry_constants.dart';
 import '../exceptions/geometry_exceptions.dart';
 import '../providers/theme_provider.dart';
 
-enum ConstructionMode { select, point, line, circle, intersection, translate }
+enum ConstructionMode { select, point, line, circle, translate }
+
+enum PointConstructionMode { point, intersection }
 
 enum LineConstructionMode { infinite, ray, segment }
 
@@ -23,6 +25,7 @@ class GeometryCanvas extends StatefulWidget {
 class _GeometryCanvasState extends State<GeometryCanvas> {
   final GeometryEngine engine = GeometryEngine();
   ConstructionMode mode = ConstructionMode.select;
+  PointConstructionMode pointMode = PointConstructionMode.point;
   LineConstructionMode lineMode = LineConstructionMode.infinite;
   CircleConstructionMode circleMode = CircleConstructionMode.centerPoint;
   List<GPoint> selectedPoints = [];
@@ -84,18 +87,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
           child: Row(
             children: [
               _toolButton(Icons.mouse, ConstructionMode.select, 'Select'),
-              _toolButton(
-                Icons.circle_outlined,
-                ConstructionMode.point,
-                'Point',
-              ),
+              _buildPointToolButton(),
               _buildLineToolButton(),
               _buildCircleToolButton(),
-              _toolButton(
-                Icons.close,
-                ConstructionMode.intersection,
-                'Intersect',
-              ),
               _toolButton(
                 Icons.pan_tool,
                 ConstructionMode.translate,
@@ -166,6 +160,49 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                 : Provider.of<ThemeProvider>(context).toolButtonInactiveIcon,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPointToolButton() {
+    return PopupMenuButton<PointConstructionMode>(
+      onSelected: (PointConstructionMode selectedMode) {
+        setState(() {
+          pointMode = selectedMode;
+          mode = ConstructionMode.point;
+          selectedPoints.clear();
+          selectedObjects.clear();
+        });
+      },
+      itemBuilder: (BuildContext context) => [
+        PopupMenuItem<PointConstructionMode>(
+          value: PointConstructionMode.point,
+          child: Text('Point'),
+        ),
+        PopupMenuItem<PointConstructionMode>(
+          value: PointConstructionMode.intersection,
+          child: Text('Intersection'),
+        ),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return Container(
+            width: GeometryConstants.toolButtonSize,
+            height: GeometryConstants.toolButtonSize,
+            decoration: BoxDecoration(
+              color: mode == ConstructionMode.point
+                  ? themeProvider.toolButtonActive
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.circle_outlined,
+              color: mode == ConstructionMode.point
+                  ? themeProvider.toolButtonActiveIcon
+                  : themeProvider.toolButtonInactiveIcon,
+            ),
+          );
+        },
       ),
     );
   }
@@ -261,60 +298,17 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   Widget _buildStatusBar() {
-    String status = 'Ready';
-    switch (mode) {
-      case ConstructionMode.point:
-        status = 'Click to create a point';
-        break;
-      case ConstructionMode.line:
-        String lineTypeStr = lineMode == LineConstructionMode.infinite
-            ? 'line'
-            : lineMode == LineConstructionMode.ray
-            ? 'ray'
-            : 'segment';
-        status = selectedPoints.isEmpty
-            ? 'Select first point for $lineTypeStr'
-            : 'Select second point for $lineTypeStr';
-        break;
-      case ConstructionMode.circle:
-        if (circleMode == CircleConstructionMode.centerPoint) {
-          status = selectedPoints.isEmpty
-              ? 'Select center point for circle'
-              : 'Select point on circle';
-        } else {
-          status = selectedPoints.isEmpty
-              ? 'Select first point for 3-point circle'
-              : selectedPoints.length == 1
-              ? 'Select second point for 3-point circle'
-              : 'Select third point for 3-point circle';
-        }
-        break;
-      case ConstructionMode.intersection:
-        status = selectedObjects.isEmpty
-            ? 'Click on first object to intersect'
-            : selectedObjects.length == 1
-            ? 'Click on second object to intersect'
-            : 'Two objects selected - creating intersections';
-        break;
-      case ConstructionMode.select:
-        status = 'Select mode - click objects to select';
-        break;
-      case ConstructionMode.translate:
-        status = 'Pan/translate mode - drag to move the canvas';
-        break;
-    }
-
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return Container(
           height: GeometryConstants.statusBarHeight,
           color: themeProvider.statusBarBackground,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                status,
+                _getStatusMessage(),
                 style: TextStyle(
                   fontSize: GeometryConstants.statusFontSize,
                   color: themeProvider.textColor,
@@ -327,12 +321,100 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     );
   }
 
+  String _getStatusMessage() {
+    switch (mode) {
+      case ConstructionMode.point:
+        return _getPointModeStatus();
+      case ConstructionMode.line:
+        return _getLineModeStatus();
+      case ConstructionMode.circle:
+        return _getCircleModeStatus();
+      case ConstructionMode.select:
+        return 'Select mode - click objects to select';
+      case ConstructionMode.translate:
+        return 'Pan/translate mode - drag to move the canvas';
+    }
+  }
+
+  String _getPointModeStatus() {
+    if (pointMode == PointConstructionMode.point) {
+      return 'Click to create a point';
+    }
+
+    // Intersection mode
+    if (selectedObjects.isEmpty) {
+      return 'Click on first object to intersect';
+    }
+
+    if (selectedObjects.length == 1) {
+      return 'Click on second object to intersect';
+    }
+
+    return 'Two objects selected - creating intersections';
+  }
+
+  String _getLineModeStatus() {
+    final String lineTypeName = _getLineTypeName();
+
+    if (selectedPoints.isEmpty) {
+      return 'Select first point for $lineTypeName';
+    }
+
+    return 'Select second point for $lineTypeName';
+  }
+
+  String _getLineTypeName() {
+    const Map<LineConstructionMode, String> lineTypeNames = {
+      LineConstructionMode.infinite: 'line',
+      LineConstructionMode.ray: 'ray',
+      LineConstructionMode.segment: 'segment',
+    };
+
+    return lineTypeNames[lineMode] ?? 'line';
+  }
+
+  String _getCircleModeStatus() {
+    if (circleMode == CircleConstructionMode.centerPoint) {
+      return _getCenterPointCircleStatus();
+    }
+
+    return _getThreePointCircleStatus();
+  }
+
+  String _getCenterPointCircleStatus() {
+    if (selectedPoints.isEmpty) {
+      return 'Select center point for circle';
+    }
+
+    return 'Select point on circle';
+  }
+
+  String _getThreePointCircleStatus() {
+    if (selectedPoints.isEmpty) {
+      return 'Select first point for 3-point circle';
+    }
+
+    if (selectedPoints.length == 1) {
+      return 'Select second point for 3-point circle';
+    }
+
+    return 'Select third point for 3-point circle';
+  }
+
+  /// Adjusts screen position to account for canvas translation
+  Offset _adjustPositionForTranslation(Offset position) {
+    return Offset(
+      position.dx - canvasTranslation.dx,
+      position.dy - canvasTranslation.dy,
+    );
+  }
+
   void _handleTapDown(TapDownDetails details) {
     final position = details.localPosition;
 
     switch (mode) {
       case ConstructionMode.point:
-        _createPoint(position);
+        _handlePointConstruction(position);
         break;
       case ConstructionMode.line:
         _handleLineConstruction(position);
@@ -342,9 +424,6 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         break;
       case ConstructionMode.select:
         _handleSelection(position);
-        break;
-      case ConstructionMode.intersection:
-        _handleIntersection(position);
         break;
       case ConstructionMode.translate:
         // Translation is handled by pan gestures, not tap
@@ -372,9 +451,23 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     }
   }
 
-  void _createPoint(Offset position) {
+  void _handlePointConstruction(Offset position) {
+    // Adjust position for canvas translation
+    final adjustedPosition = Offset(
+      position.dx - canvasTranslation.dx,
+      position.dy - canvasTranslation.dy,
+    );
+
     try {
-      engine.createFreePoint(position.dx, position.dy);
+      switch (pointMode) {
+        case PointConstructionMode.point:
+          engine.createFreePoint(adjustedPosition.dx, adjustedPosition.dy);
+          break;
+        case PointConstructionMode.intersection:
+          _handleIntersection(adjustedPosition);
+          break;
+      }
+
       setState(() {});
     } on GeometryException catch (e) {
       _showError('Error creating point: ${e.message}');
@@ -382,14 +475,21 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handleLineConstruction(Offset position) {
-    final point = engine.selectPointAt(position.dx, position.dy);
+    final adjustedPosition = _adjustPositionForTranslation(position);
+    final point = engine.selectPointAt(
+      adjustedPosition.dx,
+      adjustedPosition.dy,
+    );
 
     if (point != null) {
       selectedPoints.add(point);
     } else {
       // Create new point if no existing point found
       try {
-        final newPoint = engine.createFreePoint(position.dx, position.dy);
+        final newPoint = engine.createFreePoint(
+          adjustedPosition.dx,
+          adjustedPosition.dy,
+        );
         selectedPoints.add(newPoint);
       } on GeometryException catch (e) {
         _showError('Error creating point: ${e.message}');
@@ -421,14 +521,21 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handleCircleConstruction(Offset position) {
-    final point = engine.selectPointAt(position.dx, position.dy);
+    final adjustedPosition = _adjustPositionForTranslation(position);
+    final point = engine.selectPointAt(
+      adjustedPosition.dx,
+      adjustedPosition.dy,
+    );
 
     if (point != null) {
       selectedPoints.add(point);
     } else {
       // Create new point if no existing point found
       try {
-        final newPoint = engine.createFreePoint(position.dx, position.dy);
+        final newPoint = engine.createFreePoint(
+          adjustedPosition.dx,
+          adjustedPosition.dy,
+        );
         selectedPoints.add(newPoint);
       } on GeometryException catch (e) {
         _showError('Error creating point: ${e.message}');
@@ -467,7 +574,11 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handleSelection(Offset position) {
-    final point = engine.selectPointAt(position.dx, position.dy);
+    final adjustedPosition = _adjustPositionForTranslation(position);
+    final point = engine.selectPointAt(
+      adjustedPosition.dx,
+      adjustedPosition.dy,
+    );
     if (point != null) {
       setState(() {
         if (selectedPoints.contains(point)) {
@@ -583,7 +694,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.orange,
+        backgroundColor: Colors.yellow,
         duration: const Duration(seconds: 3),
       ),
     );

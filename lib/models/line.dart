@@ -57,8 +57,10 @@ abstract class GLine extends GeometricObject {
   /// Get line endpoints for rendering (may extend to canvas bounds for infinite lines/rays)
   List<({double x, double y})> getDrawingEndpoints(
     double canvasWidth,
-    double canvasHeight,
-  );
+    double canvasHeight, {
+    double translationX = 0.0,
+    double translationY = 0.0,
+  });
 
   String getDescription();
 
@@ -96,8 +98,10 @@ class GInfiniteLine extends GLine {
   @override
   List<({double x, double y})> getDrawingEndpoints(
     double canvasWidth,
-    double canvasHeight,
-  ) {
+    double canvasHeight, {
+    double translationX = 0.0,
+    double translationY = 0.0,
+  }) {
     if (points.length < 2) return [];
 
     final p1 = points[0];
@@ -105,22 +109,88 @@ class GInfiniteLine extends GLine {
 
     if (dir.dx.abs() < 1e-10 && dir.dy.abs() < 1e-10) return [];
 
-    // Extend line to canvas bounds
-    final maxDimension = math.max(canvasWidth, canvasHeight) * 2;
-    final length = math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy);
-    final normalizedDx = dir.dx / length;
-    final normalizedDy = dir.dy / length;
+    // Calculate the current visible viewport bounds accounting for translation
+    final viewportLeft = -translationX;
+    final viewportRight = canvasWidth - translationX;
+    final viewportTop = -translationY;
+    final viewportBottom = canvasHeight - translationY;
 
-    return [
-      (
-        x: p1.x - normalizedDx * maxDimension,
-        y: p1.y - normalizedDy * maxDimension,
-      ),
-      (
-        x: p1.x + normalizedDx * maxDimension,
-        y: p1.y + normalizedDy * maxDimension,
-      ),
-    ];
+    // Find intersections with viewport boundaries
+    final intersections = <({double x, double y})>[];
+
+    // Check intersection with left edge (x = viewportLeft)
+    if (dir.dx.abs() > 1e-10) {
+      final t = (viewportLeft - p1.x) / dir.dx;
+      final y = p1.y + t * dir.dy;
+      if (y >= viewportTop && y <= viewportBottom) {
+        intersections.add((x: viewportLeft, y: y));
+      }
+    }
+
+    // Check intersection with right edge (x = viewportRight)
+    if (dir.dx.abs() > 1e-10) {
+      final t = (viewportRight - p1.x) / dir.dx;
+      final y = p1.y + t * dir.dy;
+      if (y >= viewportTop && y <= viewportBottom) {
+        intersections.add((x: viewportRight, y: y));
+      }
+    }
+
+    // Check intersection with top edge (y = viewportTop)
+    if (dir.dy.abs() > 1e-10) {
+      final t = (viewportTop - p1.y) / dir.dy;
+      final x = p1.x + t * dir.dx;
+      if (x >= viewportLeft && x <= viewportRight) {
+        intersections.add((x: x, y: viewportTop));
+      }
+    }
+
+    // Check intersection with bottom edge (y = viewportBottom)
+    if (dir.dy.abs() > 1e-10) {
+      final t = (viewportBottom - p1.y) / dir.dy;
+      final x = p1.x + t * dir.dx;
+      if (x >= viewportLeft && x <= viewportRight) {
+        intersections.add((x: x, y: viewportBottom));
+      }
+    }
+
+    // Remove duplicates (within tolerance)
+    final uniqueIntersections = <({double x, double y})>[];
+    for (final intersection in intersections) {
+      bool isDuplicate = false;
+      for (final existing in uniqueIntersections) {
+        if ((intersection.x - existing.x).abs() < 1e-6 &&
+            (intersection.y - existing.y).abs() < 1e-6) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      if (!isDuplicate) {
+        uniqueIntersections.add(intersection);
+      }
+    }
+
+    // For infinite lines, we should have exactly 2 intersections
+    // If we have fewer, extend beyond viewport
+    if (uniqueIntersections.length < 2) {
+      final extension = math.max(canvasWidth, canvasHeight);
+      final length = math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy);
+      final normalizedDx = dir.dx / length;
+      final normalizedDy = dir.dy / length;
+
+      return [
+        (
+          x: p1.x - normalizedDx * extension,
+          y: p1.y - normalizedDy * extension,
+        ),
+        (
+          x: p1.x + normalizedDx * extension,
+          y: p1.y + normalizedDy * extension,
+        ),
+      ];
+    }
+
+    return uniqueIntersections.take(2).toList();
   }
 
   @override
@@ -160,8 +230,10 @@ class GRay extends GLine {
   @override
   List<({double x, double y})> getDrawingEndpoints(
     double canvasWidth,
-    double canvasHeight,
-  ) {
+    double canvasHeight, {
+    double translationX = 0.0,
+    double translationY = 0.0,
+  }) {
     if (points.length < 2) return [];
 
     final p1 = points[0]; // Ray origin
@@ -169,18 +241,93 @@ class GRay extends GLine {
 
     if (dir.dx.abs() < 1e-10 && dir.dy.abs() < 1e-10) return [];
 
-    // Extend ray from origin in positive direction
-    final maxDimension = math.max(canvasWidth, canvasHeight) * 2;
+    // Calculate the current visible viewport bounds accounting for translation
+    final viewportLeft = -translationX;
+    final viewportRight = canvasWidth - translationX;
+    final viewportTop = -translationY;
+    final viewportBottom = canvasHeight - translationY;
+
+    // Find intersections with viewport boundaries in the positive direction only
+    final intersections = <({double x, double y})>[];
+
+    // Check intersection with left edge (x = viewportLeft)
+    if (dir.dx.abs() > 1e-10) {
+      final t = (viewportLeft - p1.x) / dir.dx;
+      if (t >= 0) {
+        // Only positive direction for rays
+        final y = p1.y + t * dir.dy;
+        if (y >= viewportTop && y <= viewportBottom) {
+          intersections.add((x: viewportLeft, y: y));
+        }
+      }
+    }
+
+    // Check intersection with right edge (x = viewportRight)
+    if (dir.dx.abs() > 1e-10) {
+      final t = (viewportRight - p1.x) / dir.dx;
+      if (t >= 0) {
+        // Only positive direction for rays
+        final y = p1.y + t * dir.dy;
+        if (y >= viewportTop && y <= viewportBottom) {
+          intersections.add((x: viewportRight, y: y));
+        }
+      }
+    }
+
+    // Check intersection with top edge (y = viewportTop)
+    if (dir.dy.abs() > 1e-10) {
+      final t = (viewportTop - p1.y) / dir.dy;
+      if (t >= 0) {
+        // Only positive direction for rays
+        final x = p1.x + t * dir.dx;
+        if (x >= viewportLeft && x <= viewportRight) {
+          intersections.add((x: x, y: viewportTop));
+        }
+      }
+    }
+
+    // Check intersection with bottom edge (y = viewportBottom)
+    if (dir.dy.abs() > 1e-10) {
+      final t = (viewportBottom - p1.y) / dir.dy;
+      if (t >= 0) {
+        // Only positive direction for rays
+        final x = p1.x + t * dir.dx;
+        if (x >= viewportLeft && x <= viewportRight) {
+          intersections.add((x: x, y: viewportBottom));
+        }
+      }
+    }
+
+    // Remove duplicates (within tolerance)
+    final uniqueIntersections = <({double x, double y})>[];
+    for (final intersection in intersections) {
+      bool isDuplicate = false;
+      for (final existing in uniqueIntersections) {
+        if ((intersection.x - existing.x).abs() < 1e-6 &&
+            (intersection.y - existing.y).abs() < 1e-6) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      if (!isDuplicate) {
+        uniqueIntersections.add(intersection);
+      }
+    }
+
+    // Ray starts at origin and goes to the first intersection (if any)
+    if (uniqueIntersections.isNotEmpty) {
+      return [(x: p1.x, y: p1.y), uniqueIntersections.first];
+    }
+
+    // If no viewport intersection found, extend beyond viewport in positive direction
+    final extension = math.max(canvasWidth, canvasHeight);
     final length = math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy);
     final normalizedDx = dir.dx / length;
     final normalizedDy = dir.dy / length;
 
     return [
       (x: p1.x, y: p1.y), // Ray starts at origin
-      (
-        x: p1.x + normalizedDx * maxDimension,
-        y: p1.y + normalizedDy * maxDimension,
-      ),
+      (x: p1.x + normalizedDx * extension, y: p1.y + normalizedDy * extension),
     ];
   }
 
@@ -229,8 +376,10 @@ class GSegment extends GLine {
   @override
   List<({double x, double y})> getDrawingEndpoints(
     double canvasWidth,
-    double canvasHeight,
-  ) {
+    double canvasHeight, {
+    double translationX = 0.0,
+    double translationY = 0.0,
+  }) {
     if (points.length < 2) return [];
 
     final p1 = points[0];

@@ -127,7 +127,12 @@ class GeometryPainter extends CustomPainter {
   void _drawLine(Canvas canvas, GLine line, Size size, Paint paint) {
     if (line.points.length < 2) return;
 
-    final endpoints = line.getDrawingEndpoints(size.width, size.height);
+    final endpoints = line.getDrawingEndpoints(
+      size.width,
+      size.height,
+      translationX: canvasTranslation.dx,
+      translationY: canvasTranslation.dy,
+    );
     if (endpoints.length < 2) return;
 
     canvas.drawLine(

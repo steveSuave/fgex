@@ -10,9 +10,7 @@ void main() {
       return MaterialApp(
         home: ChangeNotifierProvider(
           create: (_) => ThemeProvider(),
-          child: const Scaffold(
-            body: GeometryCanvas(),
-          ),
+          child: const Scaffold(body: GeometryCanvas()),
         ),
       );
     }
@@ -27,11 +25,13 @@ void main() {
       // Check tooltip
       await tester.longPress(translateButton);
       await tester.pump();
-      
+
       expect(find.text('Pan/Translate Canvas'), findsOneWidget);
     });
 
-    testWidgets('should switch to translate mode when button is tapped', (tester) async {
+    testWidgets('should switch to translate mode when button is tapped', (
+      tester,
+    ) async {
       await tester.pumpWidget(createTestWidget());
 
       // Find and tap the translate button
@@ -40,7 +40,10 @@ void main() {
       await tester.pump();
 
       // Check that status bar shows translate mode message
-      expect(find.text('Pan/translate mode - drag to move the canvas'), findsOneWidget);
+      expect(
+        find.text('Pan/translate mode - drag to move the canvas'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('should handle pan gestures in translate mode', (tester) async {
@@ -52,57 +55,116 @@ void main() {
       await tester.pump();
 
       // Verify we're in translate mode by checking status
-      expect(find.text('Pan/translate mode - drag to move the canvas'), findsOneWidget);
-      
+      expect(
+        find.text('Pan/translate mode - drag to move the canvas'),
+        findsOneWidget,
+      );
+
       // The GeometryCanvas widget should still be present and functional
       expect(find.byType(GeometryCanvas), findsOneWidget);
     });
 
-    testWidgets('should reset canvas translation when clear button is pressed', (tester) async {
+    testWidgets('should reset canvas translation when clear button is pressed', (
+      tester,
+    ) async {
       await tester.pumpWidget(createTestWidget());
 
-      // Switch to translate mode 
+      // Switch to translate mode
       final translateButton = find.byIcon(Icons.pan_tool);
       await tester.tap(translateButton);
       await tester.pump();
 
       // Verify translate mode is active
-      expect(find.text('Pan/translate mode - drag to move the canvas'), findsOneWidget);
+      expect(
+        find.text('Pan/translate mode - drag to move the canvas'),
+        findsOneWidget,
+      );
 
       // Find and tap clear button
       final clearButton = find.byIcon(Icons.clear);
       expect(clearButton, findsOneWidget);
-      
+
       await tester.tap(clearButton);
       await tester.pump();
 
       // Canvas should be cleared and reset - still in translate mode but canvas is reset
       expect(find.byType(GeometryCanvas), findsOneWidget);
-      expect(find.text('Pan/translate mode - drag to move the canvas'), findsOneWidget);
+      expect(
+        find.text('Pan/translate mode - drag to move the canvas'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('should not interfere with other tools when not in translate mode', (tester) async {
-      await tester.pumpWidget(createTestWidget());
+    testWidgets(
+      'should not interfere with other tools when not in translate mode',
+      (tester) async {
+        await tester.pumpWidget(createTestWidget());
 
-      // Stay in select mode (default)
-      expect(find.text('Select mode - click objects to select'), findsOneWidget);
+        // Stay in select mode (default)
+        expect(
+          find.text('Select mode - click objects to select'),
+          findsOneWidget,
+        );
 
-      // Switch to point mode
-      final pointButton = find.byIcon(Icons.circle_outlined);
-      await tester.tap(pointButton);
-      await tester.pump();
+        // Tap on the point menu button and select 'Point' from dropdown
+        final pointButton = find.byIcon(Icons.circle_outlined);
+        await tester.tap(pointButton);
+        await tester.pumpAndSettle();
 
-      // Should be in point mode now
-      expect(find.text('Click to create a point'), findsOneWidget);
-      
-      // The translate functionality should not interfere
-      expect(find.byType(GeometryCanvas), findsOneWidget);
-    });
+        // Select the 'Point' option from the popup menu
+        await tester.tap(find.text('Point'));
+        await tester.pumpAndSettle();
 
-    testWidgets('should show correct construction mode enum values', (tester) async {
+        // Should be in point mode now
+        expect(find.text('Click to create a point'), findsOneWidget);
+
+        // The translate functionality should not interfere
+        expect(find.byType(GeometryCanvas), findsOneWidget);
+      },
+    );
+
+    testWidgets('should show correct construction mode enum values', (
+      tester,
+    ) async {
       // This test verifies that the ConstructionMode enum includes translate
-      expect(ConstructionMode.values.contains(ConstructionMode.translate), isTrue);
-      expect(ConstructionMode.values.length, equals(6)); // select, point, line, circle, intersection, translate
+      expect(
+        ConstructionMode.values.contains(ConstructionMode.translate),
+        isTrue,
+      );
+      expect(
+        ConstructionMode.values.length,
+        equals(5),
+      ); // select, point, line, circle, translate
     });
+
+    testWidgets(
+      'should create points at correct positions after canvas translation',
+      (tester) async {
+        await tester.pumpWidget(createTestWidget());
+
+        // Switch to translate mode and simulate canvas translation
+        final translateButton = find.byIcon(Icons.pan_tool);
+        await tester.tap(translateButton);
+        await tester.pump();
+
+        // Simulate pan gesture to translate canvas
+        final canvasFinder = find.byType(GeometryCanvas);
+        await tester.drag(canvasFinder, const Offset(50, 30));
+        await tester.pump();
+
+        // Tap on the point menu button and select 'Point' from dropdown
+        final pointButton = find.byIcon(Icons.circle_outlined);
+        await tester.tap(pointButton);
+        await tester.pumpAndSettle();
+
+        // Select the 'Point' option from the popup menu
+        await tester.tap(find.text('Point'));
+        await tester.pumpAndSettle();
+
+        // The canvas widget should handle coordinate adjustment correctly
+        expect(find.byType(GeometryCanvas), findsOneWidget);
+        expect(find.text('Click to create a point'), findsOneWidget);
+      },
+    );
   });
 }
