@@ -9,11 +9,23 @@ class GeometryPainter extends CustomPainter {
   final List<GPoint> selectedPoints;
   final List<GeometricObject> selectedObjects;
   final GPoint? hoveredPoint;
+  final Color lineColor;
+  final Color selectedLineColor;
+  final Color pointColor;
+  final Color selectedPointColor;
+  final Color hoveredPointColor;
+  final Color textColor;
 
   GeometryPainter({
     required this.engine,
     required this.selectedPoints,
     required this.selectedObjects,
+    required this.lineColor,
+    required this.selectedLineColor,
+    required this.pointColor,
+    required this.selectedPointColor,
+    required this.hoveredPointColor,
+    required this.textColor,
     this.hoveredPoint,
   });
 
@@ -21,12 +33,12 @@ class GeometryPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Draw lines
     final linePaint = Paint()
-      ..color = Colors.black
+      ..color = lineColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth
       ..style = PaintingStyle.stroke;
 
     final selectedLinePaint = Paint()
-      ..color = Colors.red
+      ..color = selectedLineColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
       ..style = PaintingStyle.stroke;
 
@@ -37,12 +49,12 @@ class GeometryPainter extends CustomPainter {
 
     // Draw circles
     final circlePaint = Paint()
-      ..color = Colors.black
+      ..color = lineColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth
       ..style = PaintingStyle.stroke;
 
     final selectedCirclePaint = Paint()
-      ..color = Colors.red
+      ..color = selectedLineColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
       ..style = PaintingStyle.stroke;
 
@@ -60,15 +72,15 @@ class GeometryPainter extends CustomPainter {
 
     // Draw points
     final pointPaint = Paint()
-      ..color = Colors.blue
+      ..color = pointColor
       ..style = PaintingStyle.fill;
 
     final selectedPointPaint = Paint()
-      ..color = Colors.red
+      ..color = selectedPointColor
       ..style = PaintingStyle.fill;
 
     final hoveredPointPaint = Paint()
-      ..color = Colors.orange
+      ..color = hoveredPointColor
       ..style = PaintingStyle.fill;
 
     for (final point in engine.points) {
@@ -90,7 +102,7 @@ class GeometryPainter extends CustomPainter {
         text: TextSpan(
           text: point.toString(),
           style: TextStyle(
-            color: Colors.black,
+            color: textColor,
             fontSize: GeometryConstants.pointNameFontSize,
           ),
         ),

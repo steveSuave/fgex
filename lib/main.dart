@@ -1,6 +1,8 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'widgets/geometry_canvas.dart';
+import 'providers/theme_provider.dart';
 
 void main() {
   runApp(const GeometryExpertApp());
@@ -11,14 +13,18 @@ class GeometryExpertApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Geometry Expert',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+    return ChangeNotifierProvider(
+      create: (context) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'Flutter Geometry Expert',
+            theme: themeProvider.currentTheme,
+            home: const GeometryExpertHome(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
-      home: const GeometryExpertHome(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }

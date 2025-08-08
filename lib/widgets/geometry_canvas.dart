@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_geometry_expert/widgets/geometry_painter.dart';
+import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/geometry_engine.dart';
 import '../constants/geometry_constants.dart';
 import '../exceptions/geometry_exceptions.dart';
+import '../providers/theme_provider.dart';
 
 enum ConstructionMode { select, point, line, circle, intersection }
 
@@ -31,23 +33,36 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       children: [
         _buildToolbar(),
         Expanded(
-          child: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Colors.white,
-            child: GestureDetector(
-              onTapDown: _handleTapDown,
-              onPanUpdate: _handlePanUpdate,
-              child: CustomPaint(
-                painter: GeometryPainter(
-                  engine: engine,
-                  selectedPoints: selectedPoints,
-                  selectedObjects: selectedObjects,
-                  hoveredPoint: hoveredPoint,
+          child: Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              return Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: themeProvider.canvasBackground,
+                child: GestureDetector(
+                  onTapDown: _handleTapDown,
+                  onPanUpdate: _handlePanUpdate,
+                  child: CustomPaint(
+                    painter: GeometryPainter(
+                      engine: engine,
+                      selectedPoints: selectedPoints,
+                      selectedObjects: selectedObjects,
+                      hoveredPoint: hoveredPoint,
+                      lineColor: themeProvider.geometryLineColor,
+                      selectedLineColor:
+                          themeProvider.geometrySelectedLineColor,
+                      pointColor: themeProvider.geometryPointColor,
+                      selectedPointColor:
+                          themeProvider.geometrySelectedPointColor,
+                      hoveredPointColor:
+                          themeProvider.geometryHoveredPointColor,
+                      textColor: themeProvider.geometryTextColor,
+                    ),
+                    size: Size.infinite,
+                  ),
                 ),
-                size: Size.infinite,
-              ),
-            ),
+              );
+            },
           ),
         ),
         _buildStatusBar(),
@@ -56,30 +71,59 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   Widget _buildToolbar() {
-    return Container(
-      height: GeometryConstants.toolbarHeight,
-      color: Colors.grey[200],
-      child: Row(
-        children: [
-          _toolButton(Icons.mouse, ConstructionMode.select, 'Select'),
-          _toolButton(Icons.circle_outlined, ConstructionMode.point, 'Point'),
-          _buildLineToolButton(),
-          _toolButton(Icons.circle, ConstructionMode.circle, 'Circle'),
-          _toolButton(Icons.close, ConstructionMode.intersection, 'Intersect'),
-          Spacer(),
-          IconButton(
-            icon: Icon(Icons.clear),
-            onPressed: () {
-              setState(() {
-                engine.clear();
-                selectedPoints.clear();
-                selectedObjects.clear();
-                hoveredPoint = null;
-              });
-            },
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Container(
+          height: GeometryConstants.toolbarHeight,
+          color: themeProvider.toolbarBackground,
+          child: Row(
+            children: [
+              _toolButton(Icons.mouse, ConstructionMode.select, 'Select'),
+              _toolButton(
+                Icons.circle_outlined,
+                ConstructionMode.point,
+                'Point',
+              ),
+              _buildLineToolButton(),
+              _toolButton(Icons.circle, ConstructionMode.circle, 'Circle'),
+              _toolButton(
+                Icons.close,
+                ConstructionMode.intersection,
+                'Intersect',
+              ),
+              Spacer(),
+              IconButton(
+                icon: Icon(Icons.clear),
+                onPressed: () {
+                  setState(() {
+                    engine.clear();
+                    selectedPoints.clear();
+                    selectedObjects.clear();
+                    hoveredPoint = null;
+                  });
+                },
+              ),
+              Consumer<ThemeProvider>(
+                builder: (context, themeProvider, child) {
+                  return IconButton(
+                    icon: Icon(
+                      themeProvider.isDarkMode
+                          ? Icons.light_mode
+                          : Icons.dark_mode,
+                    ),
+                    onPressed: () {
+                      themeProvider.toggleTheme();
+                    },
+                    tooltip: themeProvider.isDarkMode
+                        ? 'Switch to Light Mode'
+                        : 'Switch to Dark Mode',
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -99,12 +143,16 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
           width: GeometryConstants.toolButtonSize,
           height: GeometryConstants.toolButtonSize,
           decoration: BoxDecoration(
-            color: mode == toolMode ? Colors.blue[200] : Colors.transparent,
+            color: mode == toolMode
+                ? Provider.of<ThemeProvider>(context).toolButtonActive
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             icon,
-            color: mode == toolMode ? Colors.blue[800] : Colors.grey[700],
+            color: mode == toolMode
+                ? Provider.of<ThemeProvider>(context).toolButtonActiveIcon
+                : Provider.of<ThemeProvider>(context).toolButtonInactiveIcon,
           ),
         ),
       ),
@@ -135,21 +183,25 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
           child: Text('Segment'),
         ),
       ],
-      child: Container(
-        width: GeometryConstants.toolButtonSize,
-        height: GeometryConstants.toolButtonSize,
-        decoration: BoxDecoration(
-          color: mode == ConstructionMode.line
-              ? Colors.blue[200]
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          Icons.linear_scale,
-          color: mode == ConstructionMode.line
-              ? Colors.blue[800]
-              : Colors.grey[700],
-        ),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return Container(
+            width: GeometryConstants.toolButtonSize,
+            height: GeometryConstants.toolButtonSize,
+            decoration: BoxDecoration(
+              color: mode == ConstructionMode.line
+                  ? themeProvider.toolButtonActive
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.linear_scale,
+              color: mode == ConstructionMode.line
+                  ? themeProvider.toolButtonActiveIcon
+                  : themeProvider.toolButtonInactiveIcon,
+            ),
+          );
+        },
       ),
     );
   }
@@ -187,19 +239,26 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         break;
     }
 
-    return Container(
-      height: GeometryConstants.statusBarHeight,
-      color: Colors.grey[100],
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            status,
-            style: TextStyle(fontSize: GeometryConstants.statusFontSize),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Container(
+          height: GeometryConstants.statusBarHeight,
+          color: themeProvider.statusBarBackground,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                status,
+                style: TextStyle(
+                  fontSize: GeometryConstants.statusFontSize,
+                  color: themeProvider.textColor,
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

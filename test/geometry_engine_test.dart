@@ -174,7 +174,7 @@ void main() {
         final p2 = engine.createFreePoint(10.0, 10.0);
         final p3 = engine.createFreePoint(0.0, 10.0);
         final p4 = engine.createFreePoint(10.0, 0.0);
-        
+
         // Create an existing point at the intersection location
         final existingPoint = engine.createFreePoint(5.0, 5.0);
         final initialPointCount = engine.points.length;
@@ -185,7 +185,10 @@ void main() {
         final intersection = engine.createLineLineIntersection(line1, line2);
 
         expect(intersection, equals(existingPoint));
-        expect(engine.points.length, equals(initialPointCount)); // No new point created
+        expect(
+          engine.points.length,
+          equals(initialPointCount),
+        ); // No new point created
         expect(line1.points.contains(existingPoint), isTrue);
         expect(line2.points.contains(existingPoint), isTrue);
       });
@@ -229,7 +232,10 @@ void main() {
         final intersections = engine.createLineCircleIntersection(line, circle);
 
         expect(intersections.length, equals(2));
-        expect(engine.points.length, equals(initialPointCount)); // No new points created
+        expect(
+          engine.points.length,
+          equals(initialPointCount),
+        ); // No new points created
         expect(intersections.contains(existingPoint1), isTrue);
         expect(intersections.contains(existingPoint2), isTrue);
         expect(line.points.contains(existingPoint1), isTrue);
@@ -249,14 +255,20 @@ void main() {
         final point2 = engine.createFreePoint(13.0, 0.0);
         final circle2 = engine.createCircle(center2, point2);
 
-        final intersections = engine.createCircleCircleIntersection(circle1, circle2);
+        final intersections = engine.createCircleCircleIntersection(
+          circle1,
+          circle2,
+        );
 
         expect(intersections.length, equals(2));
         expect(intersections[0].x, closeTo(4.0, 0.001));
         expect(intersections[1].x, closeTo(4.0, 0.001));
         expect(intersections[0].y.abs(), closeTo(3.0, 0.001));
         expect(intersections[1].y.abs(), closeTo(3.0, 0.001));
-        expect(intersections[0].y * intersections[1].y, lessThan(0)); // One positive, one negative
+        expect(
+          intersections[0].y * intersections[1].y,
+          lessThan(0),
+        ); // One positive, one negative
       });
 
       test('should reuse existing points at intersection locations', () {
@@ -273,10 +285,16 @@ void main() {
         final existingPoint2 = engine.createFreePoint(4.0, -3.0);
         final initialPointCount = engine.points.length;
 
-        final intersections = engine.createCircleCircleIntersection(circle1, circle2);
+        final intersections = engine.createCircleCircleIntersection(
+          circle1,
+          circle2,
+        );
 
         expect(intersections.length, equals(2));
-        expect(engine.points.length, equals(initialPointCount)); // No new points created
+        expect(
+          engine.points.length,
+          equals(initialPointCount),
+        ); // No new points created
         expect(intersections.contains(existingPoint1), isTrue);
         expect(intersections.contains(existingPoint2), isTrue);
         expect(circle1.points.contains(existingPoint1), isTrue);
