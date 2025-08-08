@@ -7,6 +7,7 @@ enum CircleType {
   pointBased, // Point circle - center + point on circle (formerly PCIRCLE = 0)
   radius, // Radius circle (formerly RCIRCLE = 1)
   special, // Special circle (formerly SCIRCLE = 2)
+  threePoint, // Circle through three points
 }
 
 class GCircle extends GeometricObject {
@@ -25,6 +26,11 @@ class GCircle extends GeometricObject {
     int? id,
   }) : points = [pointOnCircle],
        super(GeometricObjectType.circle, id: id);
+
+  GCircle.threePoint(this.center, List<GPoint> threePoints, {int? id})
+    : points = List.from(threePoints),
+      circleType = CircleType.threePoint,
+      super(GeometricObjectType.circle, id: id);
 
   void addPoint(GPoint point) {
     if (!points.contains(point)) {

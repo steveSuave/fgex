@@ -264,6 +264,21 @@ void main() {
         expect(circleWithName.toString(), equals('MyCircle'));
         expect(circleWithoutName.toString(), contains('Circle'));
       });
+
+      test('should create three-point circle', () {
+        final center = GPoint.withCoordinates(2.0, 2.0);
+        final p1 = GPoint.withCoordinates(0.0, 0.0);
+        final p2 = GPoint.withCoordinates(4.0, 0.0);
+        final p3 = GPoint.withCoordinates(2.0, 4.0);
+        final circle = GCircle.threePoint(center, [p1, p2, p3]);
+
+        expect(circle.circleType, equals(CircleType.threePoint));
+        expect(circle.center, equals(center));
+        expect(circle.points.length, equals(3));
+        expect(circle.points.contains(p1), isTrue);
+        expect(circle.points.contains(p2), isTrue);
+        expect(circle.points.contains(p3), isTrue);
+      });
     });
 
     group('Constraint Tests', () {
@@ -328,10 +343,11 @@ void main() {
       });
 
       test('should have correct circle type values', () {
-        expect(CircleType.values.length, equals(3));
+        expect(CircleType.values.length, equals(4));
         expect(CircleType.values.contains(CircleType.pointBased), isTrue);
         expect(CircleType.values.contains(CircleType.radius), isTrue);
         expect(CircleType.values.contains(CircleType.special), isTrue);
+        expect(CircleType.values.contains(CircleType.threePoint), isTrue);
       });
 
       test('should have correct geometric object type values', () {

@@ -11,6 +11,8 @@ enum ConstructionMode { select, point, line, circle, intersection }
 
 enum LineConstructionMode { infinite, ray, segment }
 
+enum CircleConstructionMode { centerPoint, threePoint }
+
 class GeometryCanvas extends StatefulWidget {
   const GeometryCanvas({super.key});
 
@@ -22,6 +24,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   final GeometryEngine engine = GeometryEngine();
   ConstructionMode mode = ConstructionMode.select;
   LineConstructionMode lineMode = LineConstructionMode.infinite;
+  CircleConstructionMode circleMode = CircleConstructionMode.centerPoint;
   List<GPoint> selectedPoints = [];
   List<GeometricObject> selectedObjects = [];
   GPoint? hoveredPoint;
@@ -85,7 +88,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                 'Point',
               ),
               _buildLineToolButton(),
-              _toolButton(Icons.circle, ConstructionMode.circle, 'Circle'),
+              _buildCircleToolButton(),
               _toolButton(
                 Icons.close,
                 ConstructionMode.intersection,
@@ -206,6 +209,49 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     );
   }
 
+  Widget _buildCircleToolButton() {
+    return PopupMenuButton<CircleConstructionMode>(
+      onSelected: (CircleConstructionMode selectedMode) {
+        setState(() {
+          circleMode = selectedMode;
+          mode = ConstructionMode.circle;
+          selectedPoints.clear();
+          selectedObjects.clear();
+        });
+      },
+      itemBuilder: (BuildContext context) => [
+        PopupMenuItem<CircleConstructionMode>(
+          value: CircleConstructionMode.centerPoint,
+          child: Text('Circle (Center + Point)'),
+        ),
+        PopupMenuItem<CircleConstructionMode>(
+          value: CircleConstructionMode.threePoint,
+          child: Text('Circle (3 Points)'),
+        ),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return Container(
+            width: GeometryConstants.toolButtonSize,
+            height: GeometryConstants.toolButtonSize,
+            decoration: BoxDecoration(
+              color: mode == ConstructionMode.circle
+                  ? themeProvider.toolButtonActive
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.circle,
+              color: mode == ConstructionMode.circle
+                  ? themeProvider.toolButtonActiveIcon
+                  : themeProvider.toolButtonInactiveIcon,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildStatusBar() {
     String status = 'Ready';
     switch (mode) {
@@ -223,9 +269,17 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
             : 'Select second point for $lineTypeStr';
         break;
       case ConstructionMode.circle:
-        status = selectedPoints.isEmpty
-            ? 'Select center point for circle'
-            : 'Select point on circle';
+        if (circleMode == CircleConstructionMode.centerPoint) {
+          status = selectedPoints.isEmpty
+              ? 'Select center point for circle'
+              : 'Select point on circle';
+        } else {
+          status = selectedPoints.isEmpty
+              ? 'Select first point for 3-point circle'
+              : selectedPoints.length == 1
+              ? 'Select second point for 3-point circle'
+              : 'Select third point for 3-point circle';
+        }
         break;
       case ConstructionMode.intersection:
         status = selectedObjects.isEmpty
@@ -363,13 +417,30 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       }
     }
 
-    if (selectedPoints.length == 2) {
-      try {
-        engine.createCircle(selectedPoints[0], selectedPoints[1]);
-        selectedPoints.clear();
-      } on GeometryException catch (e) {
-        _showError('Error creating circle: ${e.message}');
-        selectedPoints.clear();
+    if (circleMode == CircleConstructionMode.centerPoint) {
+      if (selectedPoints.length == 2) {
+        try {
+          engine.createCircle(selectedPoints[0], selectedPoints[1]);
+          selectedPoints.clear();
+        } on GeometryException catch (e) {
+          _showError('Error creating circle: ${e.message}');
+          selectedPoints.clear();
+        }
+      }
+    } else {
+      // Three-point circle
+      if (selectedPoints.length == 3) {
+        try {
+          engine.createThreePointCircle(
+            selectedPoints[0],
+            selectedPoints[1],
+            selectedPoints[2],
+          );
+          selectedPoints.clear();
+        } on GeometryException catch (e) {
+          _showError('Error creating 3-point circle: ${e.message}');
+          selectedPoints.clear();
+        }
       }
     }
 
@@ -424,14 +495,11 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
 
   void _processObjectIntersection() {
     if (selectedObjects.length < 2) return;
-
     try {
-      final success = _createIntersectionForSelectedObjects();
-      if (success) {
-        _clearObjectSelection();
-      }
+      _createIntersectionForSelectedObjects();
     } on GeometryException catch (e) {
       _showError('Error creating intersection: ${e.message}');
+    } finally {
       _clearObjectSelection();
     }
   }

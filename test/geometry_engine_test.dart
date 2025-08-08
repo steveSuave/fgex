@@ -2,6 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_geometry_expert/services/geometry_engine.dart';
 import 'package:flutter_geometry_expert/exceptions/geometry_exceptions.dart';
+import 'package:flutter_geometry_expert/models/circle.dart';
 
 void main() {
   group('GeometryEngine Tests', () {
@@ -123,6 +124,55 @@ void main() {
           );
         },
       );
+    });
+
+    group('Three-Point Circle Creation', () {
+      test('should create circle through three points', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(4.0, 0.0);
+        final p3 = engine.createFreePoint(2.0, 2.0);
+
+        final circle = engine.createThreePointCircle(p1, p2, p3);
+
+        expect(circle.circleType, equals(CircleType.threePoint));
+        expect(circle.points.length, equals(3));
+        expect(circle.points.contains(p1), isTrue);
+        expect(circle.points.contains(p2), isTrue);
+        expect(circle.points.contains(p3), isTrue);
+        expect(engine.circles.length, equals(1));
+      });
+
+      test('should throw exception for identical points', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(4.0, 0.0);
+
+        expect(
+          () => engine.createThreePointCircle(p1, p1, p2),
+          throwsA(isA<InvalidConstructionException>()),
+        );
+      });
+
+      test('should throw exception for collinear points', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(2.0, 0.0);
+        final p3 = engine.createFreePoint(4.0, 0.0);
+
+        expect(
+          () => engine.createThreePointCircle(p1, p2, p3),
+          throwsA(isA<InvalidConstructionException>()),
+        );
+      });
+
+      test('should throw exception for points at same locations', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(0.0, 0.0);
+        final p3 = engine.createFreePoint(4.0, 0.0);
+
+        expect(
+          () => engine.createThreePointCircle(p1, p2, p3),
+          throwsA(isA<InvalidConstructionException>()),
+        );
+      });
     });
 
     group('Line-Line Intersection', () {

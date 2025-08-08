@@ -117,6 +117,40 @@ class GeometryEngine {
     return circle;
   }
 
+  /// Creates a circle passing through three points
+  GCircle createThreePointCircle(GPoint p1, GPoint p2, GPoint p3) {
+    if (p1 == p2 || p2 == p3 || p1 == p3) {
+      throw InvalidConstructionException(
+        'Cannot create circle with identical points',
+      );
+    }
+
+    if (p1.isSameLocation(p2.x, p2.y) ||
+        p2.isSameLocation(p3.x, p3.y) ||
+        p1.isSameLocation(p3.x, p3.y)) {
+      throw InvalidConstructionException(
+        'Cannot create circle through points at same locations',
+      );
+    }
+
+    // Check if points are collinear
+    final dx1 = p2.x - p1.x;
+    final dy1 = p2.y - p1.y;
+    final dx2 = p3.x - p1.x;
+    final dy2 = p3.y - p1.y;
+    final crossProduct = dx1 * dy2 - dy1 * dx2;
+
+    if (crossProduct.abs() < 1e-10) {
+      throw InvalidConstructionException(
+        'Cannot create circle through collinear points',
+      );
+    }
+
+    final circle = _factory.createThreePointCircle(p1, p2, p3);
+    _repository.addCircle(circle);
+    return circle;
+  }
+
   /// Creates intersection point between two lines
   GPoint? createLineLineIntersection(GLine line1, GLine line2) {
     if (line1 == line2) {
