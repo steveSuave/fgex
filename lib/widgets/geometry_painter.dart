@@ -15,6 +15,7 @@ class GeometryPainter extends CustomPainter {
   final Color selectedPointColor;
   final Color hoveredPointColor;
   final Color textColor;
+  final Offset canvasTranslation;
 
   GeometryPainter({
     required this.engine,
@@ -26,11 +27,14 @@ class GeometryPainter extends CustomPainter {
     required this.selectedPointColor,
     required this.hoveredPointColor,
     required this.textColor,
+    required this.canvasTranslation,
     this.hoveredPoint,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Apply canvas translation
+    canvas.translate(canvasTranslation.dx, canvasTranslation.dy);
     // Draw lines
     final linePaint = Paint()
       ..color = lineColor

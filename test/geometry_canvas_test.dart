@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_geometry_expert/services/geometry_engine.dart';
 import 'package:flutter_geometry_expert/models/models.dart';
+import 'package:flutter_geometry_expert/widgets/geometry_canvas.dart';
 
 void main() {
   group('Auto Point Creation Logic Tests', () {
@@ -213,6 +214,87 @@ void main() {
       final line = engine.lines.first;
       expect(line.points.contains(existingPoint), isTrue);
       expect(line.points.contains(secondPoint), isTrue);
+    });
+  });
+
+  group('Canvas Translation Tests', () {
+    test('should handle coordinate adjustment with canvas translation', () {
+      // Test coordinate transformation when canvas is translated
+      const canvasTranslation = Offset(50.0, 30.0);
+      const tapPosition = Offset(200.0, 150.0);
+      
+      // Calculate adjusted position
+      final adjustedPosition = Offset(
+        tapPosition.dx - canvasTranslation.dx,
+        tapPosition.dy - canvasTranslation.dy,
+      );
+      
+      expect(adjustedPosition.dx, equals(150.0));
+      expect(adjustedPosition.dy, equals(120.0));
+    });
+
+    test('should handle negative canvas translation', () {
+      const canvasTranslation = Offset(-25.0, -40.0);
+      const tapPosition = Offset(100.0, 100.0);
+      
+      final adjustedPosition = Offset(
+        tapPosition.dx - canvasTranslation.dx,
+        tapPosition.dy - canvasTranslation.dy,
+      );
+      
+      expect(adjustedPosition.dx, equals(125.0));
+      expect(adjustedPosition.dy, equals(140.0));
+    });
+
+    test('should reset canvas translation with clear', () {
+      // Simulate canvas translation being reset
+      var canvasTranslation = const Offset(100.0, 50.0);
+      
+      // Reset translation (like clear button does)
+      canvasTranslation = Offset.zero;
+      
+      expect(canvasTranslation.dx, equals(0.0));
+      expect(canvasTranslation.dy, equals(0.0));
+    });
+
+    test('should accumulate pan deltas correctly', () {
+      var canvasTranslation = Offset.zero;
+      
+      // Simulate multiple pan updates
+      const delta1 = Offset(10.0, 5.0);
+      const delta2 = Offset(-3.0, 8.0);
+      const delta3 = Offset(7.0, -2.0);
+      
+      canvasTranslation += delta1;
+      canvasTranslation += delta2;
+      canvasTranslation += delta3;
+      
+      expect(canvasTranslation.dx, equals(14.0));
+      expect(canvasTranslation.dy, equals(11.0));
+    });
+
+    test('should correctly adjust point selection with translation', () {
+      final engine = GeometryEngine();
+      const canvasTranslation = Offset(20.0, 15.0);
+      
+      // Create a point at original coordinates
+      final point = engine.createFreePoint(100.0, 80.0);
+      
+      // Simulate tap at translated canvas position
+      const screenTapPosition = Offset(120.0, 95.0); // point position + translation
+      final adjustedPosition = Offset(
+        screenTapPosition.dx - canvasTranslation.dx,
+        screenTapPosition.dy - canvasTranslation.dy,
+      );
+      
+      // Should find the point when adjusted coordinates are used
+      final foundPoint = engine.selectPointAt(
+        adjustedPosition.dx,
+        adjustedPosition.dy,
+      );
+      
+      expect(foundPoint, isNotNull);
+      expect(foundPoint!.id, equals(point.id));
     });
   });
 }

@@ -7,7 +7,7 @@ import '../constants/geometry_constants.dart';
 import '../exceptions/geometry_exceptions.dart';
 import '../providers/theme_provider.dart';
 
-enum ConstructionMode { select, point, line, circle, intersection }
+enum ConstructionMode { select, point, line, circle, intersection, translate }
 
 enum LineConstructionMode { infinite, ray, segment }
 
@@ -29,6 +29,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   List<GeometricObject> selectedObjects = [];
   GPoint? hoveredPoint;
   bool showLineDropdown = false;
+  Offset canvasTranslation = Offset.zero;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +61,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                       hoveredPointColor:
                           themeProvider.geometryHoveredPointColor,
                       textColor: themeProvider.geometryTextColor,
+                      canvasTranslation: canvasTranslation,
                     ),
                     size: Size.infinite,
                   ),
@@ -94,6 +96,11 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                 ConstructionMode.intersection,
                 'Intersect',
               ),
+              _toolButton(
+                Icons.pan_tool,
+                ConstructionMode.translate,
+                'Pan/Translate Canvas',
+              ),
               Spacer(),
               IconButton(
                 icon: Icon(Icons.clear),
@@ -103,6 +110,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                     selectedPoints.clear();
                     selectedObjects.clear();
                     hoveredPoint = null;
+                    canvasTranslation = Offset.zero;
                   });
                 },
               ),
@@ -291,6 +299,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       case ConstructionMode.select:
         status = 'Select mode - click objects to select';
         break;
+      case ConstructionMode.translate:
+        status = 'Pan/translate mode - drag to move the canvas';
+        break;
     }
 
     return Consumer<ThemeProvider>(
@@ -335,6 +346,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       case ConstructionMode.intersection:
         _handleIntersection(position);
         break;
+      case ConstructionMode.translate:
+        // Translation is handled by pan gestures, not tap
+        break;
     }
   }
 
@@ -342,14 +356,19 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     if (mode == ConstructionMode.select) {
       // Find hovered point for visual feedback
       final point = engine.selectPointAt(
-        details.localPosition.dx,
-        details.localPosition.dy,
+        details.localPosition.dx - canvasTranslation.dx,
+        details.localPosition.dy - canvasTranslation.dy,
       );
       if (point != hoveredPoint) {
         setState(() {
           hoveredPoint = point;
         });
       }
+    } else if (mode == ConstructionMode.translate) {
+      // Translate the canvas
+      setState(() {
+        canvasTranslation += details.delta;
+      });
     }
   }
 
