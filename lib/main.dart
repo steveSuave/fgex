@@ -18,6 +18,7 @@ class GeometryExpertApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: const GeometryExpertHome(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -27,12 +28,6 @@ class GeometryExpertHome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Flutter Geometry Expert MVP'),
-        backgroundColor: Colors.blue[600],
-      ),
-      body: GeometryCanvas(),
-    );
+    return Scaffold(body: GeometryCanvas());
   }
 }

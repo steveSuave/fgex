@@ -21,8 +21,9 @@ class GPoint extends GeometricObject {
   }) : x1 = Param(paramStartIndex ?? _generateParamIndex(), x),
        y1 = Param((paramStartIndex ?? (_paramCounter - 1)) + 1, y),
        super(GeometricObjectType.point, id: id) {
-    if (paramStartIndex == null)
+    if (paramStartIndex == null) {
       _paramCounter++; // Only increment once more if we used auto-generated indices
+    }
   }
 
   static int _paramCounter = 1;
