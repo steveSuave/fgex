@@ -4,6 +4,8 @@ class GeometryConstants {
   static const double parallelLinesTolerance = 1e-10;
   static const double pointSelectionTolerance = 20.0;
   static const double pointLocationTolerance = 1e-6;
+  static const double lineSelectionTolerance = 5.0;
+  static const double circleSelectionTolerance = 5.0;
 
   // Visual constants
   static const double defaultStrokeWidth = 1.5;

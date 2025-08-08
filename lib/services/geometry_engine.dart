@@ -1,4 +1,5 @@
 // lib/services/geometry_engine.dart
+import 'dart:math' as math;
 import '../models/models.dart';
 import '../exceptions/geometry_exceptions.dart';
 import '../constants/geometry_constants.dart';
@@ -34,8 +35,13 @@ class GeometryEngine {
     return point;
   }
 
-  /// Creates a line between two points
+  /// Creates a line between two points (backwards compatibility - creates infinite line)
   GLine createLine(GPoint p1, GPoint p2) {
+    return createInfiniteLine(p1, p2);
+  }
+
+  /// Creates an infinite line between two points
+  GInfiniteLine createInfiniteLine(GPoint p1, GPoint p2) {
     if (p1 == p2) {
       throw InvalidConstructionException(
         'Cannot create line with identical points',
@@ -50,13 +56,51 @@ class GeometryEngine {
 
     // Check if line already exists
     final existingLine = _repository.findLine(p1, p2);
-    if (existingLine != null) {
+    if (existingLine is GInfiniteLine) {
       return existingLine;
     }
 
-    final line = _factory.createLine(p1, p2);
+    final line = _factory.createInfiniteLine(p1, p2);
     _repository.addLine(line);
     return line;
+  }
+
+  /// Creates a ray from first point through second point
+  GRay createRay(GPoint p1, GPoint p2) {
+    if (p1 == p2) {
+      throw InvalidConstructionException(
+        'Cannot create ray with identical points',
+      );
+    }
+
+    if (p1.isSameLocation(p2.x, p2.y)) {
+      throw InvalidConstructionException(
+        'Cannot create ray between points at same location: ${p1.name ?? p1.id} and ${p2.name ?? p2.id}',
+      );
+    }
+
+    final ray = _factory.createRay(p1, p2);
+    _repository.addLine(ray);
+    return ray;
+  }
+
+  /// Creates a line segment between two points
+  GSegment createSegment(GPoint p1, GPoint p2) {
+    if (p1 == p2) {
+      throw InvalidConstructionException(
+        'Cannot create segment with identical points',
+      );
+    }
+
+    if (p1.isSameLocation(p2.x, p2.y)) {
+      throw InvalidConstructionException(
+        'Cannot create segment between points at same location: ${p1.name ?? p1.id} and ${p2.name ?? p2.id}',
+      );
+    }
+
+    final segment = _factory.createSegment(p1, p2);
+    _repository.addLine(segment);
+    return segment;
   }
 
   /// Creates a circle with center and point on circumference
@@ -145,6 +189,44 @@ class GeometryEngine {
     }
   }
 
+  /// Creates intersection points between two circles
+  List<GPoint> createCircleCircleIntersection(
+    GCircle circle1,
+    GCircle circle2,
+  ) {
+    if (circle1 == circle2) {
+      throw InvalidConstructionException('Cannot intersect circle with itself');
+    }
+
+    try {
+      final intersections = _intersectionCalculator
+          .calculateCircleCircleIntersections(circle1, circle2);
+
+      for (final point in intersections) {
+        point.name = _nameGenerator.generatePointName();
+        circle1.addPoint(point);
+        circle2.addPoint(point);
+        _repository.addPoint(point);
+
+        final constraint = Constraint(ConstraintType.interCC, [
+          point,
+          circle1,
+          circle2,
+        ]);
+        _repository.addConstraint(constraint);
+      }
+
+      return intersections;
+    } on GeometryException {
+      rethrow;
+    } catch (e) {
+      throw IntersectionCalculationException(
+        'Unexpected error during circle-circle intersection',
+        e,
+      );
+    }
+  }
+
   /// Finds the closest point to given coordinates
   GPoint? selectPointAt(double x, double y, {double? tolerance}) {
     return _repository.selectPointAt(
@@ -152,6 +234,88 @@ class GeometryEngine {
       y,
       tolerance: tolerance ?? GeometryConstants.pointSelectionTolerance,
     );
+  }
+
+  /// Finds a line that contains the given coordinates within tolerance
+  GLine? selectLineAt(double x, double y, {double? tolerance}) {
+    final tol = tolerance ?? GeometryConstants.lineSelectionTolerance;
+
+    for (final line in lines) {
+      if (_isPointNearLine(line, x, y, tol)) {
+        return line;
+      }
+    }
+    return null;
+  }
+
+  /// Helper method to check if a point is near a line within tolerance
+  bool _isPointNearLine(GLine line, double x, double y, double tolerance) {
+    if (line.points.length < 2) return false;
+
+    final p1 = line.points[0];
+    final p2 = line.points[1];
+
+    // Calculate distance from point to line
+    final lineLength = _distanceBetween(p1.x, p1.y, p2.x, p2.y);
+    if (lineLength == 0) return false;
+
+    // Use cross product to find perpendicular distance to infinite line
+    final crossProduct =
+        ((y - p1.y) * (p2.x - p1.x) - (x - p1.x) * (p2.y - p1.y)).abs();
+    final distanceToInfiniteLine = crossProduct / lineLength;
+
+    // Check if point is close enough to the infinite line
+    if (distanceToInfiniteLine > tolerance) return false;
+
+    // Now check constraints based on line type
+    switch (line.variant) {
+      case LineVariant.infinite:
+        return true; // Any point on infinite line is valid
+
+      case LineVariant.ray:
+        // Check if point is in the positive direction from ray origin
+        final dotProduct =
+            (x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y);
+        return dotProduct >= 0;
+
+      case LineVariant.segment:
+        // Check if point is between segment endpoints (with tolerance)
+        final t =
+            ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) /
+            (lineLength * lineLength);
+        return t >= 0 && t <= 1;
+    }
+  }
+
+  /// Finds a circle that contains the given coordinates on its circumference within tolerance
+  GCircle? selectCircleAt(double x, double y, {double? tolerance}) {
+    final tol = tolerance ?? GeometryConstants.circleSelectionTolerance;
+
+    for (final circle in circles) {
+      final radius = circle.getRadius();
+      if (radius <= 0) continue;
+
+      final distanceFromCenter = _distanceBetween(
+        x,
+        y,
+        circle.center.x,
+        circle.center.y,
+      );
+
+      // Only select if point is near the circumference (not inside or far outside)
+      final distanceFromCircumference = (distanceFromCenter - radius).abs();
+      if (distanceFromCircumference <= tol) {
+        return circle;
+      }
+    }
+    return null;
+  }
+
+  /// Helper method to calculate distance between two points
+  double _distanceBetween(double x1, double y1, double x2, double y2) {
+    final dx = x2 - x1;
+    final dy = y2 - y1;
+    return math.sqrt(dx * dx + dy * dy);
   }
 
   /// Clears all geometric objects and resets counters

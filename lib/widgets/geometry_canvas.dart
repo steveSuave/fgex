@@ -7,6 +7,8 @@ import '../exceptions/geometry_exceptions.dart';
 
 enum ConstructionMode { select, point, line, circle, intersection }
 
+enum LineConstructionMode { infinite, ray, segment }
+
 class GeometryCanvas extends StatefulWidget {
   const GeometryCanvas({super.key});
 
@@ -17,8 +19,11 @@ class GeometryCanvas extends StatefulWidget {
 class _GeometryCanvasState extends State<GeometryCanvas> {
   final GeometryEngine engine = GeometryEngine();
   ConstructionMode mode = ConstructionMode.select;
+  LineConstructionMode lineMode = LineConstructionMode.infinite;
   List<GPoint> selectedPoints = [];
+  List<GeometricObject> selectedObjects = [];
   GPoint? hoveredPoint;
+  bool showLineDropdown = false;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +42,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                 painter: GeometryPainter(
                   engine: engine,
                   selectedPoints: selectedPoints,
+                  selectedObjects: selectedObjects,
                   hoveredPoint: hoveredPoint,
                 ),
                 size: Size.infinite,
@@ -57,7 +63,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         children: [
           _toolButton(Icons.mouse, ConstructionMode.select, 'Select'),
           _toolButton(Icons.circle_outlined, ConstructionMode.point, 'Point'),
-          _toolButton(Icons.linear_scale, ConstructionMode.line, 'Line'),
+          _buildLineToolButton(),
           _toolButton(Icons.circle, ConstructionMode.circle, 'Circle'),
           _toolButton(Icons.close, ConstructionMode.intersection, 'Intersect'),
           Spacer(),
@@ -67,6 +73,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
               setState(() {
                 engine.clear();
                 selectedPoints.clear();
+                selectedObjects.clear();
                 hoveredPoint = null;
               });
             },
@@ -83,6 +90,10 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         onTap: () => setState(() {
           mode = toolMode;
           selectedPoints.clear();
+          selectedObjects.clear();
+          if (toolMode != ConstructionMode.line) {
+            showLineDropdown = false;
+          }
         }),
         child: Container(
           width: GeometryConstants.toolButtonSize,
@@ -100,6 +111,49 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     );
   }
 
+  Widget _buildLineToolButton() {
+    return PopupMenuButton<LineConstructionMode>(
+      onSelected: (LineConstructionMode selectedMode) {
+        setState(() {
+          lineMode = selectedMode;
+          mode = ConstructionMode.line;
+          selectedPoints.clear();
+          selectedObjects.clear();
+        });
+      },
+      itemBuilder: (BuildContext context) => [
+        PopupMenuItem<LineConstructionMode>(
+          value: LineConstructionMode.infinite,
+          child: Text('Line'),
+        ),
+        PopupMenuItem<LineConstructionMode>(
+          value: LineConstructionMode.ray,
+          child: Text('Ray'),
+        ),
+        PopupMenuItem<LineConstructionMode>(
+          value: LineConstructionMode.segment,
+          child: Text('Segment'),
+        ),
+      ],
+      child: Container(
+        width: GeometryConstants.toolButtonSize,
+        height: GeometryConstants.toolButtonSize,
+        decoration: BoxDecoration(
+          color: mode == ConstructionMode.line
+              ? Colors.blue[200]
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.linear_scale,
+          color: mode == ConstructionMode.line
+              ? Colors.blue[800]
+              : Colors.grey[700],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusBar() {
     String status = 'Ready';
     switch (mode) {
@@ -107,9 +161,14 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         status = 'Click to create a point';
         break;
       case ConstructionMode.line:
+        String lineTypeStr = lineMode == LineConstructionMode.infinite
+            ? 'line'
+            : lineMode == LineConstructionMode.ray
+            ? 'ray'
+            : 'segment';
         status = selectedPoints.isEmpty
-            ? 'Select first point for line'
-            : 'Select second point for line';
+            ? 'Select first point for $lineTypeStr'
+            : 'Select second point for $lineTypeStr';
         break;
       case ConstructionMode.circle:
         status = selectedPoints.isEmpty
@@ -117,7 +176,11 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
             : 'Select point on circle';
         break;
       case ConstructionMode.intersection:
-        status = 'Select two objects to intersect';
+        status = selectedObjects.isEmpty
+            ? 'Click on first object to intersect'
+            : selectedObjects.length == 1
+            ? 'Click on second object to intersect'
+            : 'Two objects selected - creating intersections';
         break;
       case ConstructionMode.select:
         status = 'Select mode - click objects to select';
@@ -194,7 +257,17 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
 
       if (selectedPoints.length == 2) {
         try {
-          engine.createLine(selectedPoints[0], selectedPoints[1]);
+          switch (lineMode) {
+            case LineConstructionMode.infinite:
+              engine.createInfiniteLine(selectedPoints[0], selectedPoints[1]);
+              break;
+            case LineConstructionMode.ray:
+              engine.createRay(selectedPoints[0], selectedPoints[1]);
+              break;
+            case LineConstructionMode.segment:
+              engine.createSegment(selectedPoints[0], selectedPoints[1]);
+              break;
+          }
           selectedPoints.clear();
         } on GeometryException catch (e) {
           _showError('Error creating line: ${e.message}');
@@ -205,7 +278,17 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       // Create new point and line
       try {
         final newPoint = engine.createFreePoint(position.dx, position.dy);
-        engine.createLine(selectedPoints[0], newPoint);
+        switch (lineMode) {
+          case LineConstructionMode.infinite:
+            engine.createInfiniteLine(selectedPoints[0], newPoint);
+            break;
+          case LineConstructionMode.ray:
+            engine.createRay(selectedPoints[0], newPoint);
+            break;
+          case LineConstructionMode.segment:
+            engine.createSegment(selectedPoints[0], newPoint);
+            break;
+        }
         selectedPoints.clear();
       } on GeometryException catch (e) {
         _showError('Error creating line: ${e.message}');
@@ -260,23 +343,105 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handleIntersection(Offset position) {
-    // Simplified intersection - just line-line for now
-    if (engine.lines.length >= 2) {
-      try {
-        final intersection = engine.createLineLineIntersection(
-          engine.lines[0],
-          engine.lines[1],
-        );
-        if (intersection == null) {
-          _showError('Lines are parallel - no intersection point');
-        } else {
-          setState(() {});
-        }
-      } on GeometryException catch (e) {
-        _showError('Error creating intersection: ${e.message}');
+    // Try to select an object at this position
+    GLine? line = engine.selectLineAt(position.dx, position.dy);
+    GCircle? circle = engine.selectCircleAt(position.dx, position.dy);
+
+    GeometricObject? selectedObject;
+    if (line != null) {
+      selectedObject = line;
+    } else if (circle != null) {
+      selectedObject = circle;
+    }
+
+    if (selectedObject != null) {
+      _addObjectToSelection(selectedObject);
+
+      if (selectedObjects.length >= 2) {
+        _processObjectIntersection();
       }
     } else {
-      _showError('Need at least 2 lines to create intersection');
+      _showError(
+        'Click directly on a line or circle to select it for intersection',
+      );
+    }
+  }
+
+  void _addObjectToSelection(GeometricObject object) {
+    setState(() {
+      if (!selectedObjects.contains(object)) {
+        selectedObjects.add(object);
+      }
+    });
+  }
+
+  void _processObjectIntersection() {
+    if (selectedObjects.length < 2) return;
+
+    try {
+      final success = _createIntersectionForSelectedObjects();
+      if (success) {
+        _clearObjectSelection();
+      }
+    } on GeometryException catch (e) {
+      _showError('Error creating intersection: ${e.message}');
+      _clearObjectSelection();
+    }
+  }
+
+  bool _handleLineLineIntersection(GLine line1, GLine line2) {
+    final intersection = engine.createLineLineIntersection(line1, line2);
+    if (intersection == null) {
+      _showError('Lines are parallel - no intersection point');
+      return false;
+    }
+    return true;
+  }
+
+  bool _handleLineCircleIntersection(GLine line, GCircle circle) {
+    final intersections = engine.createLineCircleIntersection(line, circle);
+    if (intersections.isEmpty) {
+      _showError('Line and circle do not intersect');
+      return false;
+    }
+    return true;
+  }
+
+  bool _handleCircleCircleIntersection(GCircle circle1, GCircle circle2) {
+    final intersections = engine.createCircleCircleIntersection(
+      circle1,
+      circle2,
+    );
+    if (intersections.isEmpty) {
+      _showError('Circles do not intersect');
+      return false;
+    }
+    return true;
+  }
+
+  void _clearObjectSelection() {
+    setState(() {
+      selectedObjects.clear();
+    });
+  }
+
+  bool _createIntersectionForSelectedObjects() {
+    if (selectedObjects.length < 2) return false;
+
+    final obj1 = selectedObjects[0];
+    final obj2 = selectedObjects[1];
+
+    if (obj1 is GLine && obj2 is GLine) {
+      return _handleLineLineIntersection(obj1, obj2);
+    } else if (obj1 is GLine && obj2 is GCircle) {
+      return _handleLineCircleIntersection(obj1, obj2);
+    } else if (obj1 is GCircle && obj2 is GLine) {
+      return _handleLineCircleIntersection(obj2, obj1);
+    } else if (obj1 is GCircle && obj2 is GCircle) {
+      return _handleCircleCircleIntersection(obj1, obj2);
+    } else {
+      _showError('Cannot intersect these object types');
+      return false;
     }
   }
 

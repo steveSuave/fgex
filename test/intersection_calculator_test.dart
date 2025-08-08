@@ -19,8 +19,8 @@ void main() {
         final p3 = GPoint.withCoordinates(5.0, 0.0);
         final p4 = GPoint.withCoordinates(5.0, 10.0);
 
-        final line1 = GLine(p1, p2);
-        final line2 = GLine(p3, p4);
+        final line1 = GInfiniteLine(p1, p2);
+        final line2 = GInfiniteLine(p3, p4);
 
         final intersection = calculator.calculateLineLineIntersection(
           line1,
@@ -38,8 +38,8 @@ void main() {
         final p3 = GPoint.withCoordinates(0.0, 10.0);
         final p4 = GPoint.withCoordinates(10.0, 0.0);
 
-        final line1 = GLine(p1, p2);
-        final line2 = GLine(p3, p4);
+        final line1 = GInfiniteLine(p1, p2);
+        final line2 = GInfiniteLine(p3, p4);
 
         final intersection = calculator.calculateLineLineIntersection(
           line1,
@@ -57,8 +57,8 @@ void main() {
         final p3 = GPoint.withCoordinates(0.0, 5.0);
         final p4 = GPoint.withCoordinates(10.0, 5.0);
 
-        final line1 = GLine(p1, p2);
-        final line2 = GLine(p3, p4);
+        final line1 = GInfiniteLine(p1, p2);
+        final line2 = GInfiniteLine(p3, p4);
 
         final intersection = calculator.calculateLineLineIntersection(
           line1,
@@ -74,8 +74,8 @@ void main() {
         final p3 = GPoint.withCoordinates(0.0, 5.0);
         final p4 = GPoint.withCoordinates(10.0, 15.0);
 
-        final line1 = GLine(p1, p2);
-        final line2 = GLine(p3, p4);
+        final line1 = GInfiniteLine(p1, p2);
+        final line2 = GInfiniteLine(p3, p4);
 
         final intersection = calculator.calculateLineLineIntersection(
           line1,
@@ -89,9 +89,9 @@ void main() {
         final p1 = GPoint.withCoordinates(0.0, 0.0);
         final p2 = GPoint.withCoordinates(10.0, 10.0);
 
-        final line1 = GLine.empty(lineType: LineType.standard);
+        final line1 = GInfiniteLine.empty(lineType: LineType.standard);
         line1.addPoint(p1);
-        final line2 = GLine(p1, p2);
+        final line2 = GInfiniteLine(p1, p2);
 
         expect(
           () => calculator.calculateLineLineIntersection(line1, line2),
@@ -108,7 +108,7 @@ void main() {
 
         final p1 = GPoint.withCoordinates(2.0, 5.0);
         final p2 = GPoint.withCoordinates(8.0, 5.0);
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
 
         final intersections = calculator.calculateLineCircleIntersections(
           line,
@@ -129,7 +129,7 @@ void main() {
 
         final p1 = GPoint.withCoordinates(-5.0, 5.0);
         final p2 = GPoint.withCoordinates(5.0, 5.0);
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
 
         final intersections = calculator.calculateLineCircleIntersections(
           line,
@@ -148,7 +148,7 @@ void main() {
 
         final p1 = GPoint.withCoordinates(-5.0, 5.0);
         final p2 = GPoint.withCoordinates(5.0, 5.0);
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
 
         final intersections = calculator.calculateLineCircleIntersections(
           line,
@@ -165,7 +165,7 @@ void main() {
 
         final p1 = GPoint.withCoordinates(3.0, -10.0);
         final p2 = GPoint.withCoordinates(3.0, 10.0);
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
 
         final intersections = calculator.calculateLineCircleIntersections(
           line,
@@ -185,7 +185,7 @@ void main() {
 
         final p1 = GPoint.withCoordinates(0.0, 0.0);
         final p2 = GPoint.withCoordinates(10.0, 10.0);
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
 
         expect(
           () => calculator.calculateLineCircleIntersections(line, circle),
@@ -199,7 +199,7 @@ void main() {
         final circle = GCircle.withPoint(center, pointOnCircle);
 
         final point = GPoint.withCoordinates(5.0, 5.0);
-        final line = GLine(point, point);
+        final line = GInfiniteLine(point, point);
 
         expect(
           () => calculator.calculateLineCircleIntersections(line, circle),
@@ -212,13 +212,237 @@ void main() {
         final pointOnCircle = GPoint.withCoordinates(5.0, 0.0);
         final circle = GCircle.withPoint(center, pointOnCircle);
 
-        final line = GLine.empty(lineType: LineType.standard);
+        final line = GInfiniteLine.empty(lineType: LineType.standard);
         line.addPoint(GPoint.withCoordinates(0.0, 0.0));
 
         expect(
           () => calculator.calculateLineCircleIntersections(line, circle),
           throwsA(isA<InvalidConstructionException>()),
         );
+      });
+    });
+
+    group('Ray Intersection Tests', () {
+      test('should find intersection when rays cross each other', () {
+        final p1 = GPoint.withCoordinates(0.0, 0.0);
+        final p2 = GPoint.withCoordinates(10.0, 0.0);
+        final p3 = GPoint.withCoordinates(5.0, 5.0);
+        final p4 = GPoint.withCoordinates(5.0, -5.0);
+
+        final ray1 = GRay(p1, p2); // Ray from (0,0) towards (10,0)
+        final ray2 = GRay(p3, p4); // Ray from (5,5) towards (5,-5)
+
+        final intersection = calculator.calculateLineLineIntersection(
+          ray1,
+          ray2,
+        );
+
+        expect(intersection, isNotNull);
+        expect(intersection!.x, closeTo(5.0, 0.001));
+        expect(intersection.y, closeTo(0.0, 0.001));
+      });
+
+      test('should return null when ray intersection is behind ray origin', () {
+        final p1 = GPoint.withCoordinates(0.0, 0.0);
+        final p2 = GPoint.withCoordinates(10.0, 0.0);
+        final p3 = GPoint.withCoordinates(-5.0, 5.0);
+        final p4 = GPoint.withCoordinates(-5.0, -5.0);
+
+        final ray1 = GRay(p1, p2); // Ray from (0,0) towards (10,0)
+        final ray2 = GRay(p3, p4); // Ray from (-5,5) towards (-5,-5)
+
+        final intersection = calculator.calculateLineLineIntersection(
+          ray1,
+          ray2,
+        );
+
+        expect(
+          intersection,
+          isNull,
+        ); // Intersection at (-5,0) is behind ray1's origin
+      });
+    });
+
+    group('Segment Intersection Tests', () {
+      test('should find intersection when segments cross', () {
+        final p1 = GPoint.withCoordinates(0.0, 0.0);
+        final p2 = GPoint.withCoordinates(10.0, 10.0);
+        final p3 = GPoint.withCoordinates(0.0, 10.0);
+        final p4 = GPoint.withCoordinates(10.0, 0.0);
+
+        final segment1 = GSegment(p1, p2);
+        final segment2 = GSegment(p3, p4);
+
+        final intersection = calculator.calculateLineLineIntersection(
+          segment1,
+          segment2,
+        );
+
+        expect(intersection, isNotNull);
+        expect(intersection!.x, closeTo(5.0, 0.001));
+        expect(intersection.y, closeTo(5.0, 0.001));
+      });
+
+      test('should return null when segments do not cross', () {
+        final p1 = GPoint.withCoordinates(0.0, 0.0);
+        final p2 = GPoint.withCoordinates(5.0, 5.0);
+        final p3 = GPoint.withCoordinates(6.0, 6.0);
+        final p4 = GPoint.withCoordinates(10.0, 10.0);
+
+        final segment1 = GSegment(p1, p2);
+        final segment2 = GSegment(p3, p4);
+
+        final intersection = calculator.calculateLineLineIntersection(
+          segment1,
+          segment2,
+        );
+
+        expect(
+          intersection,
+          isNull,
+        ); // Lines would intersect but segments don't overlap
+      });
+    });
+
+    group('Mixed Line Type Intersections', () {
+      test('should handle infinite line and ray intersection', () {
+        final p1 = GPoint.withCoordinates(-10.0, 0.0);
+        final p2 = GPoint.withCoordinates(10.0, 0.0);
+        final p3 = GPoint.withCoordinates(5.0, 5.0);
+        final p4 = GPoint.withCoordinates(5.0, -5.0);
+
+        final line = GInfiniteLine(p1, p2);
+        final ray = GRay(p3, p4);
+
+        final intersection = calculator.calculateLineLineIntersection(
+          line,
+          ray,
+        );
+
+        expect(intersection, isNotNull);
+        expect(intersection!.x, closeTo(5.0, 0.001));
+        expect(intersection.y, closeTo(0.0, 0.001));
+      });
+
+      test('should handle ray and segment intersection', () {
+        final p1 = GPoint.withCoordinates(0.0, 0.0);
+        final p2 = GPoint.withCoordinates(10.0, 0.0);
+        final p3 = GPoint.withCoordinates(5.0, -5.0);
+        final p4 = GPoint.withCoordinates(5.0, 5.0);
+
+        final ray = GRay(p1, p2);
+        final segment = GSegment(p3, p4);
+
+        final intersection = calculator.calculateLineLineIntersection(
+          ray,
+          segment,
+        );
+
+        expect(intersection, isNotNull);
+        expect(intersection!.x, closeTo(5.0, 0.001));
+        expect(intersection.y, closeTo(0.0, 0.001));
+      });
+    });
+
+    group('Circle-Circle Intersection', () {
+      test('should find two intersections for overlapping circles', () {
+        final center1 = GPoint.withCoordinates(0.0, 0.0);
+        final point1 = GPoint.withCoordinates(5.0, 0.0);
+        final circle1 = GCircle.withPoint(
+          center1,
+          point1,
+        ); // Radius 5 at origin
+
+        final center2 = GPoint.withCoordinates(8.0, 0.0);
+        final point2 = GPoint.withCoordinates(13.0, 0.0);
+        final circle2 = GCircle.withPoint(center2, point2); // Radius 5 at (8,0)
+
+        final intersections = calculator.calculateCircleCircleIntersections(
+          circle1,
+          circle2,
+        );
+
+        expect(intersections.length, equals(2));
+        // For circles with centers (0,0) and (8,0) both with radius 5:
+        // Intersection points are at (4, 3) and (4, -3)
+        expect(intersections[0].x, closeTo(4.0, 0.001));
+        expect(
+          intersections[0].y.abs(),
+          closeTo(3.0, 0.001),
+        ); // Allow for either +3 or -3
+        expect(intersections[1].x, closeTo(4.0, 0.001));
+        expect(
+          intersections[1].y.abs(),
+          closeTo(3.0, 0.001),
+        ); // Allow for either +3 or -3
+        // Ensure we have one positive and one negative y value
+        expect(intersections[0].y * intersections[1].y, lessThan(0));
+      });
+
+      test('should find one intersection for tangent circles', () {
+        final center1 = GPoint.withCoordinates(0.0, 0.0);
+        final point1 = GPoint.withCoordinates(5.0, 0.0);
+        final circle1 = GCircle.withPoint(
+          center1,
+          point1,
+        ); // Radius 5 at origin
+
+        final center2 = GPoint.withCoordinates(10.0, 0.0);
+        final point2 = GPoint.withCoordinates(15.0, 0.0);
+        final circle2 = GCircle.withPoint(
+          center2,
+          point2,
+        ); // Radius 5 at (10,0)
+
+        final intersections = calculator.calculateCircleCircleIntersections(
+          circle1,
+          circle2,
+        );
+
+        expect(intersections.length, equals(1));
+        expect(intersections[0].x, closeTo(5.0, 0.001));
+        expect(intersections[0].y, closeTo(0.0, 0.001));
+      });
+
+      test('should find no intersections for separate circles', () {
+        final center1 = GPoint.withCoordinates(0.0, 0.0);
+        final point1 = GPoint.withCoordinates(3.0, 0.0);
+        final circle1 = GCircle.withPoint(
+          center1,
+          point1,
+        ); // Radius 3 at origin
+
+        final center2 = GPoint.withCoordinates(10.0, 0.0);
+        final point2 = GPoint.withCoordinates(13.0, 0.0);
+        final circle2 = GCircle.withPoint(
+          center2,
+          point2,
+        ); // Radius 3 at (10,0)
+
+        final intersections = calculator.calculateCircleCircleIntersections(
+          circle1,
+          circle2,
+        );
+
+        expect(intersections.isEmpty, isTrue);
+      });
+
+      test('should handle concentric circles', () {
+        final center = GPoint.withCoordinates(0.0, 0.0);
+        final point1 = GPoint.withCoordinates(3.0, 0.0);
+        final point2 = GPoint.withCoordinates(5.0, 0.0);
+        final circle1 = GCircle.withPoint(center, point1); // Radius 3
+        final circle2 = GCircle.withPoint(center, point2); // Radius 5
+
+        final intersections = calculator.calculateCircleCircleIntersections(
+          circle1,
+          circle2,
+        );
+
+        expect(
+          intersections.isEmpty,
+          isTrue,
+        ); // Concentric circles don't intersect
       });
     });
 
@@ -229,8 +453,8 @@ void main() {
         final p3 = GPoint.withCoordinates(0.0, -5.0);
         final p4 = GPoint.withCoordinates(0.0, 5.0);
 
-        final line1 = GLine(p1, p2);
-        final line2 = GLine(p3, p4);
+        final line1 = GInfiniteLine(p1, p2);
+        final line2 = GInfiniteLine(p3, p4);
 
         final intersection = calculator.calculateLineLineIntersection(
           line1,
@@ -248,8 +472,8 @@ void main() {
         final p3 = GPoint.withCoordinates(-1000.0, 1000.0);
         final p4 = GPoint.withCoordinates(1000.0, -1000.0);
 
-        final line1 = GLine(p1, p2);
-        final line2 = GLine(p3, p4);
+        final line1 = GInfiniteLine(p1, p2);
+        final line2 = GInfiniteLine(p3, p4);
 
         final intersection = calculator.calculateLineLineIntersection(
           line1,

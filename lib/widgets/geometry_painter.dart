@@ -7,11 +7,13 @@ import '../constants/geometry_constants.dart';
 class GeometryPainter extends CustomPainter {
   final GeometryEngine engine;
   final List<GPoint> selectedPoints;
+  final List<GeometricObject> selectedObjects;
   final GPoint? hoveredPoint;
 
   GeometryPainter({
     required this.engine,
     required this.selectedPoints,
+    required this.selectedObjects,
     this.hoveredPoint,
   });
 
@@ -23,12 +25,14 @@ class GeometryPainter extends CustomPainter {
       ..strokeWidth = GeometryConstants.defaultStrokeWidth
       ..style = PaintingStyle.stroke;
 
+    final selectedLinePaint = Paint()
+      ..color = Colors.red
+      ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
+      ..style = PaintingStyle.stroke;
+
     for (final line in engine.lines) {
-      if (line.points.length >= 2) {
-        final p1 = line.points[0];
-        final p2 = line.points[1];
-        canvas.drawLine(Offset(p1.x, p1.y), Offset(p2.x, p2.y), linePaint);
-      }
+      final isSelected = selectedObjects.contains(line);
+      _drawLine(canvas, line, size, isSelected ? selectedLinePaint : linePaint);
     }
 
     // Draw circles
@@ -37,13 +41,19 @@ class GeometryPainter extends CustomPainter {
       ..strokeWidth = GeometryConstants.defaultStrokeWidth
       ..style = PaintingStyle.stroke;
 
+    final selectedCirclePaint = Paint()
+      ..color = Colors.red
+      ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
+      ..style = PaintingStyle.stroke;
+
     for (final circle in engine.circles) {
       final radius = circle.getRadius();
       if (radius > 0) {
+        final isSelected = selectedObjects.contains(circle);
         canvas.drawCircle(
           Offset(circle.center.x, circle.center.y),
           radius,
-          circlePaint,
+          isSelected ? selectedCirclePaint : circlePaint,
         );
       }
     }
@@ -95,6 +105,20 @@ class GeometryPainter extends CustomPainter {
         ),
       );
     }
+  }
+
+  /// Draws a line based on its type (infinite, ray, or segment)
+  void _drawLine(Canvas canvas, GLine line, Size size, Paint paint) {
+    if (line.points.length < 2) return;
+
+    final endpoints = line.getDrawingEndpoints(size.width, size.height);
+    if (endpoints.length < 2) return;
+
+    canvas.drawLine(
+      Offset(endpoints[0].x, endpoints[0].y),
+      Offset(endpoints[1].x, endpoints[1].y),
+      paint,
+    );
   }
 
   @override

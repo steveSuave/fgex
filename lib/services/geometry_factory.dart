@@ -13,11 +13,30 @@ class GeometryFactory {
     return point;
   }
 
-  /// Creates a line between two points
+  /// Creates a line between two points (backwards compatibility - creates infinite line)
   GLine createLine(GPoint p1, GPoint p2) {
-    final line = GLine(p1, p2);
+    return createInfiniteLine(p1, p2);
+  }
+
+  /// Creates an infinite line between two points
+  GInfiniteLine createInfiniteLine(GPoint p1, GPoint p2) {
+    final line = GInfiniteLine(p1, p2);
     line.name = _nameGenerator.generateLineName();
     return line;
+  }
+
+  /// Creates a ray from first point through second point
+  GRay createRay(GPoint p1, GPoint p2) {
+    final ray = GRay(p1, p2);
+    ray.name = _nameGenerator.generateLineName();
+    return ray;
+  }
+
+  /// Creates a line segment between two points
+  GSegment createSegment(GPoint p1, GPoint p2) {
+    final segment = GSegment(p1, p2);
+    segment.name = _nameGenerator.generateLineName();
+    return segment;
   }
 
   /// Creates a circle with center and a point on the circle

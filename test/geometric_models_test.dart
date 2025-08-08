@@ -91,7 +91,7 @@ void main() {
       test('should create line with two points', () {
         final p1 = GPoint.withCoordinates(0.0, 0.0);
         final p2 = GPoint.withCoordinates(10.0, 10.0);
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
 
         expect(line.points.length, equals(2));
         expect(line.points.contains(p1), isTrue);
@@ -101,14 +101,14 @@ void main() {
       });
 
       test('should create line with specific type', () {
-        final line = GLine.empty(lineType: LineType.radicalAxis);
+        final line = GInfiniteLine.empty(lineType: LineType.radicalAxis);
 
         expect(line.lineType, equals(LineType.radicalAxis));
         expect(line.points.isEmpty, isTrue);
       });
 
       test('should add points to line', () {
-        final line = GLine.empty(lineType: LineType.standard);
+        final line = GInfiniteLine.empty(lineType: LineType.standard);
         final p1 = GPoint.withCoordinates(5.0, 5.0);
         final p2 = GPoint.withCoordinates(15.0, 15.0);
 
@@ -121,7 +121,7 @@ void main() {
       });
 
       test('should not add duplicate points', () {
-        final line = GLine.empty(lineType: LineType.standard);
+        final line = GInfiniteLine.empty(lineType: LineType.standard);
         final point = GPoint.withCoordinates(5.0, 5.0);
 
         line.addPoint(point);
@@ -135,7 +135,7 @@ void main() {
         final p1 = GPoint.withCoordinates(0.0, 0.0);
         final p2 = GPoint.withCoordinates(10.0, 10.0);
         final p3 = GPoint.withCoordinates(5.0, 5.0);
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
 
         line.addPoint(p3);
 
@@ -153,7 +153,7 @@ void main() {
         p1.name = 'A';
         p2.name = 'B';
 
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
         final description = line.getDescription();
 
         expect(description, contains('A'));
@@ -270,7 +270,7 @@ void main() {
       test('should create constraint with type and elements', () {
         final p1 = GPoint.withCoordinates(0.0, 0.0);
         final p2 = GPoint.withCoordinates(10.0, 10.0);
-        final line = GLine(p1, p2);
+        final line = GInfiniteLine(p1, p2);
 
         final constraint = Constraint(ConstraintType.interLL, [p1, line]);
 
@@ -295,7 +295,7 @@ void main() {
         GeometricObject.resetIdCounter();
 
         final obj1 = GPoint.withCoordinates(0.0, 0.0);
-        final obj2 = GLine.empty(lineType: LineType.standard);
+        final obj2 = GInfiniteLine.empty(lineType: LineType.standard);
         final obj3 = GCircle(GPoint.withCoordinates(0.0, 0.0));
 
         expect(obj1.id, equals(1));
