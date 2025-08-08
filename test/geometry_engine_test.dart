@@ -50,7 +50,7 @@ void main() {
         final p1 = engine.createFreePoint(0.0, 0.0);
         final p2 = engine.createFreePoint(10.0, 10.0);
 
-        final line = engine.createLine(p1, p2);
+        final line = engine.createInfiniteLine(p1, p2);
 
         expect(line.points.length, equals(2));
         expect(line.points.contains(p1), isTrue);
@@ -62,7 +62,7 @@ void main() {
         final point = engine.createFreePoint(5.0, 5.0);
 
         expect(
-          () => engine.createLine(point, point),
+          () => engine.createInfiniteLine(point, point),
           throwsA(isA<InvalidConstructionException>()),
         );
       });
@@ -72,7 +72,7 @@ void main() {
         final p2 = engine.createFreePoint(5.0, 5.0);
 
         expect(
-          () => engine.createLine(p1, p2),
+          () => engine.createInfiniteLine(p1, p2),
           throwsA(isA<InvalidConstructionException>()),
         );
       });
@@ -81,8 +81,8 @@ void main() {
         final p1 = engine.createFreePoint(0.0, 0.0);
         final p2 = engine.createFreePoint(10.0, 10.0);
 
-        final line1 = engine.createLine(p1, p2);
-        final line2 = engine.createLine(p1, p2);
+        final line1 = engine.createInfiniteLine(p1, p2);
+        final line2 = engine.createInfiniteLine(p1, p2);
 
         expect(identical(line1, line2), isTrue);
         expect(engine.lines.length, equals(1));
@@ -132,8 +132,8 @@ void main() {
         final p3 = engine.createFreePoint(0.0, 10.0);
         final p4 = engine.createFreePoint(10.0, 0.0);
 
-        final line1 = engine.createLine(p1, p2);
-        final line2 = engine.createLine(p3, p4);
+        final line1 = engine.createInfiniteLine(p1, p2);
+        final line2 = engine.createInfiniteLine(p3, p4);
 
         final intersection = engine.createLineLineIntersection(line1, line2);
 
@@ -150,8 +150,8 @@ void main() {
         final p3 = engine.createFreePoint(0.0, 5.0);
         final p4 = engine.createFreePoint(10.0, 5.0);
 
-        final line1 = engine.createLine(p1, p2);
-        final line2 = engine.createLine(p3, p4);
+        final line1 = engine.createInfiniteLine(p1, p2);
+        final line2 = engine.createInfiniteLine(p3, p4);
 
         final intersection = engine.createLineLineIntersection(line1, line2);
 
@@ -161,12 +161,128 @@ void main() {
       test('should throw exception for intersecting line with itself', () {
         final p1 = engine.createFreePoint(0.0, 0.0);
         final p2 = engine.createFreePoint(10.0, 10.0);
-        final line = engine.createLine(p1, p2);
+        final line = engine.createInfiniteLine(p1, p2);
 
         expect(
           () => engine.createLineLineIntersection(line, line),
           throwsA(isA<InvalidConstructionException>()),
         );
+      });
+
+      test('should reuse existing point at intersection location', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 10.0);
+        final p3 = engine.createFreePoint(0.0, 10.0);
+        final p4 = engine.createFreePoint(10.0, 0.0);
+        
+        // Create an existing point at the intersection location
+        final existingPoint = engine.createFreePoint(5.0, 5.0);
+        final initialPointCount = engine.points.length;
+
+        final line1 = engine.createInfiniteLine(p1, p2);
+        final line2 = engine.createInfiniteLine(p3, p4);
+
+        final intersection = engine.createLineLineIntersection(line1, line2);
+
+        expect(intersection, equals(existingPoint));
+        expect(engine.points.length, equals(initialPointCount)); // No new point created
+        expect(line1.points.contains(existingPoint), isTrue);
+        expect(line2.points.contains(existingPoint), isTrue);
+      });
+    });
+
+    group('Line-Circle Intersection', () {
+      test('should create intersection points for line crossing circle', () {
+        final center = engine.createFreePoint(0.0, 0.0);
+        final pointOnCircle = engine.createFreePoint(5.0, 0.0);
+        final circle = engine.createCircle(center, pointOnCircle);
+
+        final p1 = engine.createFreePoint(-10.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 0.0);
+        final line = engine.createInfiniteLine(p1, p2);
+
+        final intersections = engine.createLineCircleIntersection(line, circle);
+
+        expect(intersections.length, equals(2));
+        expect(intersections[0].x, closeTo(-5.0, 0.001));
+        expect(intersections[0].y, closeTo(0.0, 0.001));
+        expect(intersections[1].x, closeTo(5.0, 0.001));
+        expect(intersections[1].y, closeTo(0.0, 0.001));
+      });
+
+      test('should reuse existing points at intersection locations', () {
+        final center = engine.createFreePoint(0.0, 0.0);
+        final pointOnCircle = engine.createFreePoint(0.0, 5.0);
+        final circle = engine.createCircle(center, pointOnCircle);
+
+        // Create existing points at intersection locations
+        final existingPoint1 = engine.createFreePoint(-5.0, 0.0);
+        final existingPoint2 = engine.createFreePoint(5.0, 0.0);
+
+        final p1 = engine.createFreePoint(-10.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 0.0);
+        final line = engine.createInfiniteLine(p1, p2);
+
+        // Count points before intersection
+        final initialPointCount = engine.points.length;
+
+        final intersections = engine.createLineCircleIntersection(line, circle);
+
+        expect(intersections.length, equals(2));
+        expect(engine.points.length, equals(initialPointCount)); // No new points created
+        expect(intersections.contains(existingPoint1), isTrue);
+        expect(intersections.contains(existingPoint2), isTrue);
+        expect(line.points.contains(existingPoint1), isTrue);
+        expect(line.points.contains(existingPoint2), isTrue);
+        expect(circle.points.contains(existingPoint1), isTrue);
+        expect(circle.points.contains(existingPoint2), isTrue);
+      });
+    });
+
+    group('Circle-Circle Intersection', () {
+      test('should create intersection points for overlapping circles', () {
+        final center1 = engine.createFreePoint(0.0, 0.0);
+        final point1 = engine.createFreePoint(5.0, 0.0);
+        final circle1 = engine.createCircle(center1, point1);
+
+        final center2 = engine.createFreePoint(8.0, 0.0);
+        final point2 = engine.createFreePoint(13.0, 0.0);
+        final circle2 = engine.createCircle(center2, point2);
+
+        final intersections = engine.createCircleCircleIntersection(circle1, circle2);
+
+        expect(intersections.length, equals(2));
+        expect(intersections[0].x, closeTo(4.0, 0.001));
+        expect(intersections[1].x, closeTo(4.0, 0.001));
+        expect(intersections[0].y.abs(), closeTo(3.0, 0.001));
+        expect(intersections[1].y.abs(), closeTo(3.0, 0.001));
+        expect(intersections[0].y * intersections[1].y, lessThan(0)); // One positive, one negative
+      });
+
+      test('should reuse existing points at intersection locations', () {
+        final center1 = engine.createFreePoint(0.0, 0.0);
+        final point1 = engine.createFreePoint(5.0, 0.0);
+        final circle1 = engine.createCircle(center1, point1);
+
+        final center2 = engine.createFreePoint(8.0, 0.0);
+        final point2 = engine.createFreePoint(13.0, 0.0);
+        final circle2 = engine.createCircle(center2, point2);
+
+        // Create existing points at intersection locations
+        final existingPoint1 = engine.createFreePoint(4.0, 3.0);
+        final existingPoint2 = engine.createFreePoint(4.0, -3.0);
+        final initialPointCount = engine.points.length;
+
+        final intersections = engine.createCircleCircleIntersection(circle1, circle2);
+
+        expect(intersections.length, equals(2));
+        expect(engine.points.length, equals(initialPointCount)); // No new points created
+        expect(intersections.contains(existingPoint1), isTrue);
+        expect(intersections.contains(existingPoint2), isTrue);
+        expect(circle1.points.contains(existingPoint1), isTrue);
+        expect(circle1.points.contains(existingPoint2), isTrue);
+        expect(circle2.points.contains(existingPoint1), isTrue);
+        expect(circle2.points.contains(existingPoint2), isTrue);
       });
     });
 
@@ -203,7 +319,7 @@ void main() {
         final p2 = engine.createFreePoint(10.0, 10.0);
         final p3 = engine.createFreePoint(5.0, 0.0);
 
-        engine.createLine(p1, p2);
+        engine.createInfiniteLine(p1, p2);
         engine.createCircle(p1, p3);
 
         expect(engine.points.length, greaterThan(0));

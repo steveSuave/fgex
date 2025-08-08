@@ -14,7 +14,7 @@ class GeometryEngine {
   final GeometryFactory _factory = GeometryFactory();
   final IntersectionCalculator _intersectionCalculator =
       IntersectionCalculator();
-  final NameGenerator _nameGenerator = NameGenerator();
+  final NameGenerator _nameGenerator = NameGenerator.instance;
 
   // Expose repository collections
   List<GPoint> get points => _repository.points;
@@ -33,11 +33,6 @@ class GeometryEngine {
     final point = _factory.createFreePoint(x, y, name: name);
     _repository.addPoint(point);
     return point;
-  }
-
-  /// Creates a line between two points (backwards compatibility - creates infinite line)
-  GLine createLine(GPoint p1, GPoint p2) {
-    return createInfiniteLine(p1, p2);
   }
 
   /// Creates an infinite line between two points
@@ -133,6 +128,28 @@ class GeometryEngine {
           .calculateLineLineIntersection(line1, line2);
       if (intersection == null) return null;
 
+      // Check if a point already exists at this location
+      final existingPoint = _repository.selectPointAt(
+        intersection.x,
+        intersection.y,
+        tolerance: GeometryConstants.pointLocationTolerance,
+      );
+
+      if (existingPoint != null) {
+        // Use existing point instead of creating a new one
+        line1.addPoint(existingPoint);
+        line2.addPoint(existingPoint);
+
+        // Add constraint
+        final constraint = Constraint(ConstraintType.interLL, [
+          existingPoint,
+          line1,
+          line2,
+        ]);
+        _repository.addConstraint(constraint);
+        return existingPoint;
+      }
+
       intersection.name = _nameGenerator.generatePointName();
 
       // Add point to both lines
@@ -164,21 +181,44 @@ class GeometryEngine {
       final intersections = _intersectionCalculator
           .calculateLineCircleIntersections(line, circle);
 
+      final resultPoints = <GPoint>[];
       for (final point in intersections) {
-        point.name = _nameGenerator.generatePointName();
-        line.addPoint(point);
-        circle.addPoint(point);
-        _repository.addPoint(point);
+        // Check if a point already exists at this location
+        final existingPoint = _repository.selectPointAt(
+          point.x,
+          point.y,
+          tolerance: GeometryConstants.pointLocationTolerance,
+        );
 
-        final constraint = Constraint(ConstraintType.interLC, [
-          point,
-          line,
-          circle,
-        ]);
-        _repository.addConstraint(constraint);
+        if (existingPoint != null) {
+          // Use existing point instead of creating a new one
+          line.addPoint(existingPoint);
+          circle.addPoint(existingPoint);
+
+          final constraint = Constraint(ConstraintType.interLC, [
+            existingPoint,
+            line,
+            circle,
+          ]);
+          _repository.addConstraint(constraint);
+          resultPoints.add(existingPoint);
+        } else {
+          point.name = _nameGenerator.generatePointName();
+          line.addPoint(point);
+          circle.addPoint(point);
+          _repository.addPoint(point);
+
+          final constraint = Constraint(ConstraintType.interLC, [
+            point,
+            line,
+            circle,
+          ]);
+          _repository.addConstraint(constraint);
+          resultPoints.add(point);
+        }
       }
 
-      return intersections;
+      return resultPoints;
     } on GeometryException {
       rethrow;
     } catch (e) {
@@ -202,21 +242,44 @@ class GeometryEngine {
       final intersections = _intersectionCalculator
           .calculateCircleCircleIntersections(circle1, circle2);
 
+      final resultPoints = <GPoint>[];
       for (final point in intersections) {
-        point.name = _nameGenerator.generatePointName();
-        circle1.addPoint(point);
-        circle2.addPoint(point);
-        _repository.addPoint(point);
+        // Check if a point already exists at this location
+        final existingPoint = _repository.selectPointAt(
+          point.x,
+          point.y,
+          tolerance: GeometryConstants.pointLocationTolerance,
+        );
 
-        final constraint = Constraint(ConstraintType.interCC, [
-          point,
-          circle1,
-          circle2,
-        ]);
-        _repository.addConstraint(constraint);
+        if (existingPoint != null) {
+          // Use existing point instead of creating a new one
+          circle1.addPoint(existingPoint);
+          circle2.addPoint(existingPoint);
+
+          final constraint = Constraint(ConstraintType.interCC, [
+            existingPoint,
+            circle1,
+            circle2,
+          ]);
+          _repository.addConstraint(constraint);
+          resultPoints.add(existingPoint);
+        } else {
+          point.name = _nameGenerator.generatePointName();
+          circle1.addPoint(point);
+          circle2.addPoint(point);
+          _repository.addPoint(point);
+
+          final constraint = Constraint(ConstraintType.interCC, [
+            point,
+            circle1,
+            circle2,
+          ]);
+          _repository.addConstraint(constraint);
+          resultPoints.add(point);
+        }
       }
 
-      return intersections;
+      return resultPoints;
     } on GeometryException {
       rethrow;
     } catch (e) {

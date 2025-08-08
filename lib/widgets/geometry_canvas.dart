@@ -254,39 +254,28 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
 
     if (point != null) {
       selectedPoints.add(point);
-
-      if (selectedPoints.length == 2) {
-        try {
-          switch (lineMode) {
-            case LineConstructionMode.infinite:
-              engine.createInfiniteLine(selectedPoints[0], selectedPoints[1]);
-              break;
-            case LineConstructionMode.ray:
-              engine.createRay(selectedPoints[0], selectedPoints[1]);
-              break;
-            case LineConstructionMode.segment:
-              engine.createSegment(selectedPoints[0], selectedPoints[1]);
-              break;
-          }
-          selectedPoints.clear();
-        } on GeometryException catch (e) {
-          _showError('Error creating line: ${e.message}');
-          selectedPoints.clear();
-        }
-      }
-    } else if (selectedPoints.length == 1) {
-      // Create new point and line
+    } else {
+      // Create new point if no existing point found
       try {
         final newPoint = engine.createFreePoint(position.dx, position.dy);
+        selectedPoints.add(newPoint);
+      } on GeometryException catch (e) {
+        _showError('Error creating point: ${e.message}');
+        return;
+      }
+    }
+
+    if (selectedPoints.length == 2) {
+      try {
         switch (lineMode) {
           case LineConstructionMode.infinite:
-            engine.createInfiniteLine(selectedPoints[0], newPoint);
+            engine.createInfiniteLine(selectedPoints[0], selectedPoints[1]);
             break;
           case LineConstructionMode.ray:
-            engine.createRay(selectedPoints[0], newPoint);
+            engine.createRay(selectedPoints[0], selectedPoints[1]);
             break;
           case LineConstructionMode.segment:
-            engine.createSegment(selectedPoints[0], newPoint);
+            engine.createSegment(selectedPoints[0], selectedPoints[1]);
             break;
         }
         selectedPoints.clear();
@@ -304,21 +293,20 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
 
     if (point != null) {
       selectedPoints.add(point);
-
-      if (selectedPoints.length == 2) {
-        try {
-          engine.createCircle(selectedPoints[0], selectedPoints[1]);
-          selectedPoints.clear();
-        } on GeometryException catch (e) {
-          _showError('Error creating circle: ${e.message}');
-          selectedPoints.clear();
-        }
-      }
-    } else if (selectedPoints.length == 1) {
-      // Create new point and circle
+    } else {
+      // Create new point if no existing point found
       try {
         final newPoint = engine.createFreePoint(position.dx, position.dy);
-        engine.createCircle(selectedPoints[0], newPoint);
+        selectedPoints.add(newPoint);
+      } on GeometryException catch (e) {
+        _showError('Error creating point: ${e.message}');
+        return;
+      }
+    }
+
+    if (selectedPoints.length == 2) {
+      try {
+        engine.createCircle(selectedPoints[0], selectedPoints[1]);
         selectedPoints.clear();
       } on GeometryException catch (e) {
         _showError('Error creating circle: ${e.message}');
@@ -357,7 +345,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     if (selectedObject != null) {
       _addObjectToSelection(selectedObject);
 
-      if (selectedObjects.length >= 2) {
+      if (selectedObjects.length == 2) {
         _processObjectIntersection();
       }
     } else {
@@ -392,7 +380,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   bool _handleLineLineIntersection(GLine line1, GLine line2) {
     final intersection = engine.createLineLineIntersection(line1, line2);
     if (intersection == null) {
-      _showError('Lines are parallel - no intersection point');
+      _showError('No intersection point');
       return false;
     }
     return true;
@@ -449,7 +437,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.orange,
         duration: const Duration(seconds: 3),
       ),
     );

@@ -4,18 +4,13 @@ import 'name_generator.dart';
 
 /// Handles creation of geometric objects
 class GeometryFactory {
-  final NameGenerator _nameGenerator = NameGenerator();
+  final NameGenerator _nameGenerator = NameGenerator.instance;
 
   /// Creates a free point that can be moved
   GPoint createFreePoint(double x, double y, {String? name}) {
     final point = GPoint.withCoordinates(x, y);
     point.name = name ?? _nameGenerator.generatePointName();
     return point;
-  }
-
-  /// Creates a line between two points (backwards compatibility - creates infinite line)
-  GLine createLine(GPoint p1, GPoint p2) {
-    return createInfiniteLine(p1, p2);
   }
 
   /// Creates an infinite line between two points

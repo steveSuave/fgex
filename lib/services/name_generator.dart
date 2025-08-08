@@ -1,6 +1,16 @@
 // lib/services/name_generator.dart
 /// Generates unique names for geometric objects
 class NameGenerator {
+
+    // Private static instance
+  static final NameGenerator _instance = NameGenerator._();
+
+  // Private constructor
+  NameGenerator._();
+
+  // Public static getter to access the instance
+  static NameGenerator get instance => _instance;
+
   int _pointCounter = 0;
   int _lineCounter = 0;
   int _circleCounter = 0;
