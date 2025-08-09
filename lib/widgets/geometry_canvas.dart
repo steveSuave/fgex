@@ -527,7 +527,17 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     try {
       switch (pointMode) {
         case PointConstructionMode.point:
-          engine.createFreePoint(adjustedPosition.dx, adjustedPosition.dy);
+          // Check if there's already a point at this location
+          final existingPoint = engine.selectPointAt(
+            adjustedPosition.dx,
+            adjustedPosition.dy,
+          );
+
+          if (existingPoint == null) {
+            // No existing point - create new point
+            engine.createFreePoint(adjustedPosition.dx, adjustedPosition.dy);
+          }
+          // If there's already a point, do nothing (don't create duplicate)
           break;
         case PointConstructionMode.intersection:
           _handleIntersection(adjustedPosition);
