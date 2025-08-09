@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_geometry_expert/widgets/geometry_painter.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
@@ -24,6 +25,7 @@ class GeometryCanvas extends StatefulWidget {
 
 class _GeometryCanvasState extends State<GeometryCanvas> {
   final GeometryEngine engine = GeometryEngine();
+  final FocusNode _focusNode = FocusNode();
   ConstructionMode mode = ConstructionMode.select;
   PointConstructionMode pointMode = PointConstructionMode.point;
   LineConstructionMode lineMode = LineConstructionMode.infinite;
@@ -35,47 +37,133 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   Offset canvasTranslation = Offset.zero;
 
   @override
+  void initState() {
+    super.initState();
+    _focusNode.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildToolbar(),
-        Expanded(
-          child: Consumer<ThemeProvider>(
-            builder: (context, themeProvider, child) {
-              return Container(
-                width: double.infinity,
-                height: double.infinity,
-                color: themeProvider.canvasBackground,
-                child: GestureDetector(
-                  onTapDown: _handleTapDown,
-                  onPanUpdate: _handlePanUpdate,
-                  child: CustomPaint(
-                    painter: GeometryPainter(
-                      engine: engine,
-                      selectedPoints: selectedPoints,
-                      selectedObjects: selectedObjects,
-                      hoveredPoint: hoveredPoint,
-                      lineColor: themeProvider.geometryLineColor,
-                      selectedLineColor:
-                          themeProvider.geometrySelectedLineColor,
-                      pointColor: themeProvider.geometryPointColor,
-                      selectedPointColor:
-                          themeProvider.geometrySelectedPointColor,
-                      hoveredPointColor:
-                          themeProvider.geometryHoveredPointColor,
-                      textColor: themeProvider.geometryTextColor,
-                      canvasTranslation: canvasTranslation,
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: (node, event) {
+        return _handleKeyEvent(event)
+            ? KeyEventResult.handled
+            : KeyEventResult.ignored;
+      },
+      autofocus: true,
+      child: Column(
+        children: [
+          _buildToolbar(),
+          Expanded(
+            child: Consumer<ThemeProvider>(
+              builder: (context, themeProvider, child) {
+                return Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  color: themeProvider.canvasBackground,
+                  child: GestureDetector(
+                    onTapDown: (details) {
+                      _focusNode.requestFocus();
+                      _handleTapDown(details);
+                    },
+                    onPanUpdate: _handlePanUpdate,
+                    child: CustomPaint(
+                      painter: GeometryPainter(
+                        engine: engine,
+                        selectedPoints: selectedPoints,
+                        selectedObjects: selectedObjects,
+                        hoveredPoint: hoveredPoint,
+                        lineColor: themeProvider.geometryLineColor,
+                        selectedLineColor:
+                            themeProvider.geometrySelectedLineColor,
+                        pointColor: themeProvider.geometryPointColor,
+                        selectedPointColor:
+                            themeProvider.geometrySelectedPointColor,
+                        hoveredPointColor:
+                            themeProvider.geometryHoveredPointColor,
+                        textColor: themeProvider.geometryTextColor,
+                        canvasTranslation: canvasTranslation,
+                      ),
+                      size: Size.infinite,
                     ),
-                    size: Size.infinite,
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-        _buildStatusBar(),
-      ],
+          _buildStatusBar(),
+        ],
+      ),
     );
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      final key = event.logicalKey;
+
+      if (key == LogicalKeyboardKey.keyP) {
+        _selectTool(ConstructionMode.point, PointConstructionMode.point);
+        return true;
+      } else if (key == LogicalKeyboardKey.keyL) {
+        _selectTool(ConstructionMode.line, null, LineConstructionMode.infinite);
+        return true;
+      } else if (key == LogicalKeyboardKey.keyS) {
+        _selectTool(ConstructionMode.line, null, LineConstructionMode.segment);
+        return true;
+      } else if (key == LogicalKeyboardKey.keyR) {
+        _selectTool(ConstructionMode.line, null, LineConstructionMode.ray);
+        return true;
+      } else if (key == LogicalKeyboardKey.keyC) {
+        _selectTool(
+          ConstructionMode.circle,
+          null,
+          null,
+          CircleConstructionMode.centerPoint,
+        );
+        return true;
+      } else if (key == LogicalKeyboardKey.digit3) {
+        _selectTool(
+          ConstructionMode.circle,
+          null,
+          null,
+          CircleConstructionMode.threePoint,
+        );
+        return true;
+      } else if (key == LogicalKeyboardKey.keyI) {
+        _selectTool(ConstructionMode.point, PointConstructionMode.intersection);
+        return true;
+      } else if (key == LogicalKeyboardKey.keyT) {
+        _selectTool(ConstructionMode.translate);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _selectTool(
+    ConstructionMode newMode, [
+    PointConstructionMode? newPointMode,
+    LineConstructionMode? newLineMode,
+    CircleConstructionMode? newCircleMode,
+  ]) {
+    setState(() {
+      mode = newMode;
+      if (newPointMode != null) pointMode = newPointMode;
+      if (newLineMode != null) lineMode = newLineMode;
+      if (newCircleMode != null) circleMode = newCircleMode;
+      selectedPoints.clear();
+      selectedObjects.clear();
+      if (newMode != ConstructionMode.line) {
+        showLineDropdown = false;
+      }
+    });
   }
 
   Widget _buildToolbar() {
@@ -136,14 +224,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     return Tooltip(
       message: tooltip,
       child: GestureDetector(
-        onTap: () => setState(() {
-          mode = toolMode;
-          selectedPoints.clear();
-          selectedObjects.clear();
-          if (toolMode != ConstructionMode.line) {
-            showLineDropdown = false;
-          }
-        }),
+        onTap: () => _selectTool(toolMode),
         child: Container(
           width: GeometryConstants.toolButtonSize,
           height: GeometryConstants.toolButtonSize,
@@ -167,12 +248,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   Widget _buildPointToolButton() {
     return PopupMenuButton<PointConstructionMode>(
       onSelected: (PointConstructionMode selectedMode) {
-        setState(() {
-          pointMode = selectedMode;
-          mode = ConstructionMode.point;
-          selectedPoints.clear();
-          selectedObjects.clear();
-        });
+        _selectTool(ConstructionMode.point, selectedMode);
       },
       itemBuilder: (BuildContext context) => [
         PopupMenuItem<PointConstructionMode>(
@@ -210,12 +286,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   Widget _buildLineToolButton() {
     return PopupMenuButton<LineConstructionMode>(
       onSelected: (LineConstructionMode selectedMode) {
-        setState(() {
-          lineMode = selectedMode;
-          mode = ConstructionMode.line;
-          selectedPoints.clear();
-          selectedObjects.clear();
-        });
+        _selectTool(ConstructionMode.line, null, selectedMode);
       },
       itemBuilder: (BuildContext context) => [
         PopupMenuItem<LineConstructionMode>(
@@ -257,12 +328,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   Widget _buildCircleToolButton() {
     return PopupMenuButton<CircleConstructionMode>(
       onSelected: (CircleConstructionMode selectedMode) {
-        setState(() {
-          circleMode = selectedMode;
-          mode = ConstructionMode.circle;
-          selectedPoints.clear();
-          selectedObjects.clear();
-        });
+        _selectTool(ConstructionMode.circle, null, null, selectedMode);
       },
       itemBuilder: (BuildContext context) => [
         PopupMenuItem<CircleConstructionMode>(
@@ -694,7 +760,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.yellow,
+        backgroundColor: Colors.lightBlue,
         duration: const Duration(seconds: 3),
       ),
     );
