@@ -76,4 +76,8 @@ class GeometryRepository {
     _circles.clear();
     _constraints.clear();
   }
+
+  List<GeometricObject> getAllObjects() {
+    return [..._points, ..._lines, ..._circles];
+  }
 }

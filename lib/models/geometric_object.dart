@@ -1,4 +1,5 @@
 import 'package:flutter_geometry_expert/models/constraint.dart';
+import 'point.dart';
 
 enum GeometricObjectType {
   point, // formerly POINT = 1
@@ -29,4 +30,10 @@ abstract class GeometricObject {
   }
 
   bool shouldDraw() => visible;
+
+  /// Calculates the shortest distance from this object to a given point.
+  double distanceToPoint(GPoint point);
+
+  /// Returns the point on this object that is closest to a given point.
+  GPoint getClosestPoint(GPoint toPoint);
 }

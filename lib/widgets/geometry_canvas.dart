@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_geometry_expert/widgets/geometry_painter.dart';
+import 'package:flutter_geometry_expert/services/snap_service.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/geometry_engine.dart';
@@ -25,6 +26,7 @@ class GeometryCanvas extends StatefulWidget {
 
 class _GeometryCanvasState extends State<GeometryCanvas> {
   final GeometryEngine engine = GeometryEngine();
+  final SnapService snapService = SnapService();
   final FocusNode _focusNode = FocusNode();
   ConstructionMode mode = ConstructionMode.select;
   PointConstructionMode pointMode = PointConstructionMode.point;
@@ -32,7 +34,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   CircleConstructionMode circleMode = CircleConstructionMode.centerPoint;
   List<GPoint> selectedPoints = [];
   List<GeometricObject> selectedObjects = [];
-  GPoint? hoveredPoint;
+  GeometricObject? hoveredObject;
   bool showLineDropdown = false;
   Offset canvasTranslation = Offset.zero;
 
@@ -68,30 +70,33 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                   width: double.infinity,
                   height: double.infinity,
                   color: themeProvider.canvasBackground,
-                  child: GestureDetector(
-                    onTapDown: (details) {
-                      _focusNode.requestFocus();
-                      _handleTapDown(details);
-                    },
-                    onPanUpdate: _handlePanUpdate,
-                    child: CustomPaint(
-                      painter: GeometryPainter(
-                        engine: engine,
-                        selectedPoints: selectedPoints,
-                        selectedObjects: selectedObjects,
-                        hoveredPoint: hoveredPoint,
-                        lineColor: themeProvider.geometryLineColor,
-                        selectedLineColor:
-                            themeProvider.geometrySelectedLineColor,
-                        pointColor: themeProvider.geometryPointColor,
-                        selectedPointColor:
-                            themeProvider.geometrySelectedPointColor,
-                        hoveredPointColor:
-                            themeProvider.geometryHoveredPointColor,
-                        textColor: themeProvider.geometryTextColor,
-                        canvasTranslation: canvasTranslation,
+                  child: MouseRegion(
+                    onHover: _handlePointerHover,
+                    child: GestureDetector(
+                      onTapDown: (details) {
+                        _focusNode.requestFocus();
+                        _handleTapDown(details);
+                      },
+                      onPanUpdate: _handlePanUpdate,
+                      child: CustomPaint(
+                        painter: GeometryPainter(
+                          engine: engine,
+                          selectedPoints: selectedPoints,
+                          selectedObjects: selectedObjects,
+                          hoveredObject: hoveredObject,
+                          lineColor: themeProvider.geometryLineColor,
+                          selectedLineColor:
+                              themeProvider.geometrySelectedLineColor,
+                          pointColor: themeProvider.geometryPointColor,
+                          selectedPointColor:
+                              themeProvider.geometrySelectedPointColor,
+                          hoveredPointColor:
+                              themeProvider.geometryHoveredPointColor,
+                          textColor: themeProvider.geometryTextColor,
+                          canvasTranslation: canvasTranslation,
+                        ),
+                        size: Size.infinite,
                       ),
-                      size: Size.infinite,
                     ),
                   ),
                 );
@@ -191,7 +196,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                     engine.clear();
                     selectedPoints.clear();
                     selectedObjects.clear();
-                    hoveredPoint = null;
+                    hoveredObject = null;
                     canvasTranslation = Offset.zero;
                   });
                 },
@@ -388,6 +393,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   String _getStatusMessage() {
+    if (hoveredObject != null) {
+      return 'Snap to ${hoveredObject.runtimeType.toString().replaceAll('G', '')} ${hoveredObject?.name ?? 'ID: ${hoveredObject?.id}'}';
+    }
     switch (mode) {
       case ConstructionMode.point:
         return _getPointModeStatus();
@@ -419,16 +427,6 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     return 'Two objects selected - creating intersections';
   }
 
-  String _getLineModeStatus() {
-    final String lineTypeName = _getLineTypeName();
-
-    if (selectedPoints.isEmpty) {
-      return 'Select first point for $lineTypeName';
-    }
-
-    return 'Select second point for $lineTypeName';
-  }
-
   String _getLineTypeName() {
     const Map<LineConstructionMode, String> lineTypeNames = {
       LineConstructionMode.infinite: 'line',
@@ -437,6 +435,16 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     };
 
     return lineTypeNames[lineMode] ?? 'line';
+  }
+
+  String _getLineModeStatus() {
+    final String lineTypeName = _getLineTypeName();
+
+    if (selectedPoints.isEmpty) {
+      return 'Select first point for $lineTypeName';
+    }
+
+    return 'Select second point for $lineTypeName';
   }
 
   String _getCircleModeStatus() {
@@ -468,11 +476,27 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   /// Adjusts screen position to account for canvas translation
-  Offset _adjustPositionForTranslation(Offset position) {
-    return Offset(
+  GPoint _adjustPositionForTranslation(Offset position) {
+    return GPoint.withCoordinates(
       position.dx - canvasTranslation.dx,
       position.dy - canvasTranslation.dy,
     );
+  }
+
+  void _handlePointerHover(PointerEvent details) {
+    if (mode == ConstructionMode.translate) return;
+
+    final pointer = _adjustPositionForTranslation(details.localPosition);
+    final newHoveredObject = snapService.getHighlightedObject(
+      pointer,
+      engine.getAllObjects(),
+    );
+
+    if (newHoveredObject != hoveredObject) {
+      setState(() {
+        hoveredObject = newHoveredObject;
+      });
+    }
   }
 
   void _handleTapDown(TapDownDetails details) {
@@ -498,18 +522,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handlePanUpdate(DragUpdateDetails details) {
-    if (mode == ConstructionMode.select) {
-      // Find hovered point for visual feedback
-      final point = engine.selectPointAt(
-        details.localPosition.dx - canvasTranslation.dx,
-        details.localPosition.dy - canvasTranslation.dy,
-      );
-      if (point != hoveredPoint) {
-        setState(() {
-          hoveredPoint = point;
-        });
-      }
-    } else if (mode == ConstructionMode.translate) {
+    if (mode == ConstructionMode.translate) {
       // Translate the canvas
       setState(() {
         canvasTranslation += details.delta;
@@ -518,29 +531,24 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handlePointConstruction(Offset position) {
-    // Adjust position for canvas translation
-    final adjustedPosition = Offset(
-      position.dx - canvasTranslation.dx,
-      position.dy - canvasTranslation.dy,
-    );
+    final pointer = _adjustPositionForTranslation(position);
 
     try {
       switch (pointMode) {
         case PointConstructionMode.point:
-          // Check if there's already a point at this location
-          final existingPoint = engine.selectPointAt(
-            adjustedPosition.dx,
-            adjustedPosition.dy,
+          final snappedObject = snapService.selectObject(
+            pointer,
+            engine.getAllObjects(),
           );
-
-          if (existingPoint == null) {
-            // No existing point - create new point
-            engine.createFreePoint(adjustedPosition.dx, adjustedPosition.dy);
+          if (snappedObject is GPoint) {
+            // If the snapped point is not already in the engine, it's a new point that needs to be created.
+            if (!engine.getAllObjects().contains(snappedObject)) {
+              engine.createFreePoint(snappedObject.x, snappedObject.y);
+            }
           }
-          // If there's already a point, do nothing (don't create duplicate)
           break;
         case PointConstructionMode.intersection:
-          _handleIntersection(adjustedPosition);
+          _handleIntersection(pointer.offset);
           break;
       }
 
@@ -551,26 +559,25 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handleLineConstruction(Offset position) {
-    final adjustedPosition = _adjustPositionForTranslation(position);
-    final point = engine.selectPointAt(
-      adjustedPosition.dx,
-      adjustedPosition.dy,
+    final pointer = _adjustPositionForTranslation(position);
+    final snappedObject = snapService.selectObject(
+      pointer,
+      engine.getAllObjects(),
     );
 
-    if (point != null) {
-      selectedPoints.add(point);
-    } else {
-      // Create new point if no existing point found
-      try {
+    if (snappedObject is GPoint) {
+      if (!engine.getAllObjects().contains(snappedObject)) {
         final newPoint = engine.createFreePoint(
-          adjustedPosition.dx,
-          adjustedPosition.dy,
+          snappedObject.x,
+          snappedObject.y,
         );
         selectedPoints.add(newPoint);
-      } on GeometryException catch (e) {
-        _showError('Error creating point: ${e.message}');
-        return;
+      } else {
+        selectedPoints.add(snappedObject);
       }
+    } else {
+      _showError('Lines must be defined by points.');
+      return;
     }
 
     if (selectedPoints.length == 2) {
@@ -597,26 +604,25 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handleCircleConstruction(Offset position) {
-    final adjustedPosition = _adjustPositionForTranslation(position);
-    final point = engine.selectPointAt(
-      adjustedPosition.dx,
-      adjustedPosition.dy,
+    final pointer = _adjustPositionForTranslation(position);
+    final snappedObject = snapService.selectObject(
+      pointer,
+      engine.getAllObjects(),
     );
 
-    if (point != null) {
-      selectedPoints.add(point);
-    } else {
-      // Create new point if no existing point found
-      try {
+    if (snappedObject is GPoint) {
+      if (!engine.getAllObjects().contains(snappedObject)) {
         final newPoint = engine.createFreePoint(
-          adjustedPosition.dx,
-          adjustedPosition.dy,
+          snappedObject.x,
+          snappedObject.y,
         );
         selectedPoints.add(newPoint);
-      } on GeometryException catch (e) {
-        _showError('Error creating point: ${e.message}');
-        return;
+      } else {
+        selectedPoints.add(snappedObject);
       }
+    } else {
+      _showError('Circles must be defined by points.');
+      return;
     }
 
     if (circleMode == CircleConstructionMode.centerPoint) {
@@ -650,17 +656,18 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   void _handleSelection(Offset position) {
-    final adjustedPosition = _adjustPositionForTranslation(position);
-    final point = engine.selectPointAt(
-      adjustedPosition.dx,
-      adjustedPosition.dy,
+    final pointer = _adjustPositionForTranslation(position);
+    final snappedObject = snapService.getHighlightedObject(
+      pointer,
+      engine.getAllObjects(),
     );
-    if (point != null) {
+
+    if (snappedObject != null) {
       setState(() {
-        if (selectedPoints.contains(point)) {
-          selectedPoints.remove(point);
+        if (selectedObjects.contains(snappedObject)) {
+          selectedObjects.remove(snappedObject);
         } else {
-          selectedPoints.add(point);
+          selectedObjects.add(snappedObject);
         }
       });
     }
@@ -668,18 +675,15 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
 
   void _handleIntersection(Offset position) {
     // Try to select an object at this position
-    GLine? line = engine.selectLineAt(position.dx, position.dy);
-    GCircle? circle = engine.selectCircleAt(position.dx, position.dy);
+    final pointer = GPoint.withCoordinates(position.dx, position.dy);
+    final snappedObject = snapService.getHighlightedObject(
+      pointer,
+      engine.getAllObjects(),
+    );
 
-    GeometricObject? selectedObject;
-    if (line != null) {
-      selectedObject = line;
-    } else if (circle != null) {
-      selectedObject = circle;
-    }
-
-    if (selectedObject != null) {
-      _addObjectToSelection(selectedObject);
+    if (snappedObject != null &&
+        (snappedObject is GLine || snappedObject is GCircle)) {
+      _addObjectToSelection(snappedObject);
 
       if (selectedObjects.length == 2) {
         _processObjectIntersection();

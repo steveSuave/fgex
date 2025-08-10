@@ -423,4 +423,8 @@ class GeometryEngine {
     GeometricObject.resetIdCounter();
     GPoint.resetParamCounter();
   }
+
+  List<GeometricObject> getAllObjects() {
+    return _repository.getAllObjects();
+  }
 }

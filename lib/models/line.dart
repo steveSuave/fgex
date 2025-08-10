@@ -65,6 +65,42 @@ abstract class GLine extends GeometricObject {
   String getDescription();
 
   @override
+  double distanceToPoint(GPoint point) {
+    final closestPoint = getClosestPoint(point);
+    return closestPoint.distanceTo(point);
+  }
+
+  /// Calculates the projection of a point onto the infinite line defined by the line's points.
+  /// Returns the projection parameter 't' and the projected point.
+  ({double t, GPoint point}) _projectPoint(GPoint toPoint) {
+    if (points.length < 2) {
+      // If line is not defined, return the first point or a zero point.
+      final p1 = firstPoint ?? GPoint.withCoordinates(0, 0);
+      return (t: 0.0, point: p1);
+    }
+    final p1 = points[0];
+    final p2 = points[1];
+    final lineDirX = p2.x - p1.x;
+    final lineDirY = p2.y - p1.y;
+
+    final double lineLengthSq = lineDirX * lineDirX + lineDirY * lineDirY;
+    if (lineLengthSq < 1e-12) {
+      // The two points defining the line are the same.
+      return (t: 0.0, point: p1);
+    }
+
+    final double t =
+        ((toPoint.x - p1.x) * lineDirX + (toPoint.y - p1.y) * lineDirY) /
+        lineLengthSq;
+
+    final closestX = p1.x + t * lineDirX;
+    final closestY = p1.y + t * lineDirY;
+    final closestPoint = GPoint.withCoordinates(closestX, closestY);
+
+    return (t: t, point: closestPoint);
+  }
+
+  @override
   String toString() => name ?? getDescription();
 }
 
@@ -81,6 +117,12 @@ class GInfiniteLine extends GLine {
 
   GInfiniteLine.empty({super.lineType = LineType.standard, super.id})
     : super.empty();
+
+  @override
+  GPoint getClosestPoint(GPoint toPoint) {
+    // For an infinite line, the closest point is always the direct projection.
+    return _projectPoint(toPoint).point;
+  }
 
   @override
   bool containsPoint(double x, double y, {double tolerance = 1e-10}) {
@@ -175,6 +217,7 @@ class GInfiniteLine extends GLine {
     if (uniqueIntersections.length < 2) {
       final extension = math.max(canvasWidth, canvasHeight);
       final length = math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy);
+      if (length == 0) return [];
       final normalizedDx = dir.dx / length;
       final normalizedDy = dir.dy / length;
 
@@ -209,6 +252,18 @@ class GRay extends GLine {
   GRay(super.p1, super.p2, {super.lineType = LineType.standard, super.id});
 
   GRay.empty({super.lineType = LineType.standard, super.id}) : super.empty();
+
+  @override
+  GPoint getClosestPoint(GPoint toPoint) {
+    final projection = _projectPoint(toPoint);
+    // If t < 0, the projection is behind the ray's start point.
+    // In this case, the closest point on the ray is the start point itself.
+    if (projection.t < 0) {
+      return points[0];
+    }
+    // Otherwise, it's the projected point on the infinite line.
+    return projection.point;
+  }
 
   @override
   bool containsPoint(double x, double y, {double tolerance = 1e-10}) {
@@ -322,6 +377,7 @@ class GRay extends GLine {
     // If no viewport intersection found, extend beyond viewport in positive direction
     final extension = math.max(canvasWidth, canvasHeight);
     final length = math.sqrt(dir.dx * dir.dx + dir.dy * dir.dy);
+    if (length == 0) return [];
     final normalizedDx = dir.dx / length;
     final normalizedDy = dir.dy / length;
 
@@ -348,6 +404,21 @@ class GSegment extends GLine {
 
   GSegment.empty({super.lineType = LineType.standard, super.id})
     : super.empty();
+
+  @override
+  GPoint getClosestPoint(GPoint toPoint) {
+    final projection = _projectPoint(toPoint);
+    // For a segment, the projection must be between the start and end points (0 <= t <= 1).
+    if (projection.t < 0) {
+      // Projection is before the start point.
+      return points[0];
+    } else if (projection.t > 1) {
+      // Projection is after the end point.
+      return points[1];
+    }
+    // Projection is within the segment.
+    return projection.point;
+  }
 
   @override
   bool containsPoint(double x, double y, {double tolerance = 1e-10}) {

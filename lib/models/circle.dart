@@ -55,5 +55,41 @@ class GCircle extends GeometricObject {
   }
 
   @override
+  double distanceToPoint(GPoint point) {
+    final closestPoint = getClosestPoint(point);
+    return closestPoint.distanceTo(point);
+  }
+
+  @override
+  GPoint getClosestPoint(GPoint toPoint) {
+    final radius = getRadius();
+    if (radius <= 1e-10) {
+      return center; // Treat as a point if radius is zero/negligible
+    }
+
+    final double distFromCenter = center.distanceTo(toPoint);
+    if (distFromCenter <= 1e-10) {
+      // If the point is at the center, any point on the circumference is equally close.
+      // We can pick one based on the first defining point or an arbitrary vector.
+      if (points.isNotEmpty) {
+        return points.first;
+      } else {
+        return GPoint.withCoordinates(center.x + radius, center.y);
+      }
+    }
+
+    // Vector from center to the point
+    final dx = toPoint.x - center.x;
+    final dy = toPoint.y - center.y;
+
+    // Scale this vector to the radius length
+    final scale = radius / distFromCenter;
+    final closestX = center.x + dx * scale;
+    final closestY = center.y + dy * scale;
+
+    return GPoint.withCoordinates(closestX, closestY);
+  }
+
+  @override
   String toString() => name ?? getDescription();
 }

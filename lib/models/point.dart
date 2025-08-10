@@ -1,4 +1,5 @@
 // lib/models/point.dart
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'geometric_object.dart';
 import 'param.dart';
@@ -40,6 +41,23 @@ class GPoint extends GeometricObject {
   void setXY(double x, double y) {
     x1.value = x;
     y1.value = y;
+  }
+
+  double distanceTo(GPoint other) {
+    final dx = x - other.x;
+    final dy = y - other.y;
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
+  @override
+  double distanceToPoint(GPoint point) {
+    return distanceTo(point);
+  }
+
+  @override
+  GPoint getClosestPoint(GPoint toPoint) {
+    // For a point, the closest point to another point is itself.
+    return this;
   }
 
   bool isSameLocation(

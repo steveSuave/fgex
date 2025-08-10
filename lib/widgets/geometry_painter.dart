@@ -8,7 +8,7 @@ class GeometryPainter extends CustomPainter {
   final GeometryEngine engine;
   final List<GPoint> selectedPoints;
   final List<GeometricObject> selectedObjects;
-  final GPoint? hoveredPoint;
+  final GeometricObject? hoveredObject;
   final Color lineColor;
   final Color selectedLineColor;
   final Color pointColor;
@@ -28,11 +28,15 @@ class GeometryPainter extends CustomPainter {
     required this.hoveredPointColor,
     required this.textColor,
     required this.canvasTranslation,
-    this.hoveredPoint,
+    this.hoveredObject,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    final hoveredPoint = hoveredObject is GPoint
+        ? hoveredObject as GPoint
+        : null;
+
     // Apply canvas translation
     canvas.translate(canvasTranslation.dx, canvasTranslation.dy);
     // Draw lines
@@ -46,9 +50,23 @@ class GeometryPainter extends CustomPainter {
       ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
       ..style = PaintingStyle.stroke;
 
+    final hoveredLinePaint = Paint()
+      ..color =
+          hoveredPointColor // Use hovered color for lines too
+      ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
+      ..style = PaintingStyle.stroke;
+
     for (final line in engine.lines) {
       final isSelected = selectedObjects.contains(line);
-      _drawLine(canvas, line, size, isSelected ? selectedLinePaint : linePaint);
+      final isHovered = hoveredObject == line;
+      _drawLine(
+        canvas,
+        line,
+        size,
+        isHovered
+            ? hoveredLinePaint
+            : (isSelected ? selectedLinePaint : linePaint),
+      );
     }
 
     // Draw circles
@@ -62,14 +80,23 @@ class GeometryPainter extends CustomPainter {
       ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
       ..style = PaintingStyle.stroke;
 
+    final hoveredCirclePaint = Paint()
+      ..color =
+          hoveredPointColor // Use hovered color for circles too
+      ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
+      ..style = PaintingStyle.stroke;
+
     for (final circle in engine.circles) {
       final radius = circle.getRadius();
       if (radius > 0) {
         final isSelected = selectedObjects.contains(circle);
+        final isHovered = hoveredObject == circle;
         canvas.drawCircle(
           Offset(circle.center.x, circle.center.y),
           radius,
-          isSelected ? selectedCirclePaint : circlePaint,
+          isHovered
+              ? hoveredCirclePaint
+              : (isSelected ? selectedCirclePaint : circlePaint),
         );
       }
     }
@@ -119,6 +146,15 @@ class GeometryPainter extends CustomPainter {
           point.x + GeometryConstants.pointNameOffset,
           point.y + GeometryConstants.pointNameVerticalOffset,
         ),
+      );
+    }
+
+    // Draw the hovered object if it's a new point (e.g. intersection)
+    if (hoveredPoint != null && !engine.points.contains(hoveredPoint)) {
+      canvas.drawCircle(
+        Offset(hoveredPoint.x, hoveredPoint.y),
+        GeometryConstants.hoveredPointRadius,
+        hoveredPointPaint,
       );
     }
   }
