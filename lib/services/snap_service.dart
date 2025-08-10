@@ -10,10 +10,22 @@ class SnapService {
       IntersectionCalculator();
 
   /// Main entry point for selecting an object.
-  /// If an object is snapped, returns it. Otherwise, returns a new point at the pointer's location.
-  GeometricObject selectObject(GPoint pointer, List<GeometricObject> objects) {
+  /// If an object is snapped, returns a point (either the object itself if it's a point, or a point on the object if it's a line/circle).
+  /// Otherwise, returns a new point at the pointer's location.
+  GeometricObject getSnapPoint(GPoint pointer, List<GeometricObject> objects) {
     final snapped = getHighlightedObject(pointer, objects);
-    return snapped ?? pointer;
+    if (snapped == null) return pointer;
+
+    // If the snapped object is already a point, return it
+    if (snapped is GPoint) return snapped;
+
+    // If it's a line or circle, return the closest point on it
+    if (snapped is GLine || snapped is GCircle) {
+      return snapped.getClosestPoint(pointer);
+    }
+
+    // Fallback to the pointer location
+    return pointer;
   }
 
   /// Main entry point for highlighting an object.
@@ -33,6 +45,9 @@ class SnapService {
 
     final snappedIntersection = _snapToIntersections(pointer, nearbyObjects);
     if (snappedIntersection != null) return snappedIntersection;
+
+    final snappedObject = _snapToObjects(pointer, nearbyObjects);
+    if (snappedObject != null) return snappedObject;
 
     final snappedPointOnLarge = _snapToPointsOnLarges(pointer, nearbyObjects);
     if (snappedPointOnLarge != null) return snappedPointOnLarge;
@@ -164,5 +179,17 @@ class SnapService {
 
     // Select the best among those closest points
     return _selectClosest(closestPoints, pointer);
+  }
+
+  GeometricObject? _snapToObjects(
+    GPoint pointer,
+    List<GeometricObject> nearbyObjects,
+  ) {
+    final nearbyLarges = nearbyObjects
+        .where((o) => o.type != GeometricObjectType.point)
+        .toList();
+    if (nearbyLarges.isEmpty) return null;
+
+    return _selectClosest(nearbyLarges, pointer);
   }
 }

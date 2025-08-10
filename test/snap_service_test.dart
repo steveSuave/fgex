@@ -48,7 +48,7 @@ void main() {
       final pointer = GPoint.withCoordinates(52, 50);
       final objects = <GeometricObject>[line];
 
-      final snappedObject = snapService.getHighlightedObject(pointer, objects);
+      final snappedObject = snapService.getSnapPoint(pointer, objects);
 
       expect(snappedObject, isA<GPoint>());
       expect((snappedObject as GPoint).x, closeTo(51, 0.001));
@@ -63,7 +63,7 @@ void main() {
       final pointer = GPoint.withCoordinates(10, 50);
       final objects = <GeometricObject>[circle];
 
-      final snappedObject = snapService.getHighlightedObject(pointer, objects);
+      final snappedObject = snapService.getSnapPoint(pointer, objects);
 
       expect(snappedObject, isA<GPoint>());
       expect((snappedObject as GPoint).x, closeTo(0, 0.001));
@@ -78,6 +78,87 @@ void main() {
       final snappedObject = snapService.getHighlightedObject(pointer, objects);
 
       expect(snappedObject, isNull);
+    });
+
+    test(
+      'getSnapPoint returns point on circle while getHighlightedObject returns circle',
+      () {
+        final circle = GCircle.withPoint(
+          GPoint.withCoordinates(50, 50),
+          GPoint.withCoordinates(100, 50),
+        );
+        final pointer = GPoint.withCoordinates(
+          90,
+          50,
+        ); // Near circumference, away from center
+        final objects = <GeometricObject>[circle];
+
+        final highlightedObject = snapService.getHighlightedObject(
+          pointer,
+          objects,
+        );
+        final snapPoint = snapService.getSnapPoint(pointer, objects);
+
+        expect(highlightedObject, isA<GCircle>());
+        expect(highlightedObject, equals(circle));
+        expect(snapPoint, isA<GPoint>());
+        expect((snapPoint as GPoint).x, closeTo(100, 0.001));
+        expect(snapPoint.y, closeTo(50, 0.001));
+      },
+    );
+
+    test(
+      'getSnapPoint returns point on line while getHighlightedObject returns line',
+      () {
+        final line = GInfiniteLine(
+          GPoint.withCoordinates(0, 0),
+          GPoint.withCoordinates(100, 100),
+        );
+        final pointer = GPoint.withCoordinates(52, 50);
+        final objects = <GeometricObject>[line];
+
+        final highlightedObject = snapService.getHighlightedObject(
+          pointer,
+          objects,
+        );
+        final snapPoint = snapService.getSnapPoint(pointer, objects);
+
+        expect(highlightedObject, isA<GLine>());
+        expect(highlightedObject, equals(line));
+        expect(snapPoint, isA<GPoint>());
+        expect((snapPoint as GPoint).x, closeTo(51, 0.001));
+        expect(snapPoint.y, closeTo(51, 0.001));
+      },
+    );
+
+    test('getSnapPoint returns existing point when snapping to point', () {
+      final point = GPoint.withCoordinates(50, 50);
+      final pointer = GPoint.withCoordinates(52, 52);
+      final objects = <GeometricObject>[point];
+
+      final highlightedObject = snapService.getHighlightedObject(
+        pointer,
+        objects,
+      );
+      final snapPoint = snapService.getSnapPoint(pointer, objects);
+
+      expect(highlightedObject, equals(point));
+      expect(snapPoint, equals(point));
+    });
+
+    test('getSnapPoint returns pointer when no snap available', () {
+      final point = GPoint.withCoordinates(100, 100);
+      final pointer = GPoint.withCoordinates(10, 10);
+      final objects = <GeometricObject>[point];
+
+      final highlightedObject = snapService.getHighlightedObject(
+        pointer,
+        objects,
+      );
+      final snapPoint = snapService.getSnapPoint(pointer, objects);
+
+      expect(highlightedObject, isNull);
+      expect(snapPoint, equals(pointer));
     });
   });
 }

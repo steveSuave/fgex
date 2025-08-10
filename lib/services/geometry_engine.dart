@@ -427,4 +427,9 @@ class GeometryEngine {
   List<GeometricObject> getAllObjects() {
     return _repository.getAllObjects();
   }
+
+  // TODO implement in repository
+  List<GeometricObject> getAllPoints() {
+    return _repository.getAllObjects().whereType<GPoint>().toList();
+  }
 }

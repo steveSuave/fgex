@@ -536,7 +536,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     try {
       switch (pointMode) {
         case PointConstructionMode.point:
-          final snappedObject = snapService.selectObject(
+          final snappedObject = snapService.getSnapPoint(
             pointer,
             engine.getAllObjects(),
           );
@@ -560,7 +560,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
 
   void _handleLineConstruction(Offset position) {
     final pointer = _adjustPositionForTranslation(position);
-    final snappedObject = snapService.selectObject(
+    final snappedObject = snapService.getSnapPoint(
       pointer,
       engine.getAllObjects(),
     );
@@ -605,7 +605,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
 
   void _handleCircleConstruction(Offset position) {
     final pointer = _adjustPositionForTranslation(position);
-    final snappedObject = snapService.selectObject(
+    final snappedObject = snapService.getSnapPoint(
       pointer,
       engine.getAllObjects(),
     );
