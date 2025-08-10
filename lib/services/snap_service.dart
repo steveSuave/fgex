@@ -2,6 +2,7 @@
 import '../models/models.dart';
 import 'intersection_calculator.dart';
 
+// TODO move to constants
 const double maxSnapDistance = 15.0;
 
 class SnapService {

@@ -85,6 +85,18 @@ void main() {
         expect(point.x1.xIndex, equals(1));
         expect(point.y1.xIndex, equals(2));
       });
+
+      test('should calculate distance to another point', () {
+        final point1 = GPoint.withCoordinates(0, 0);
+        final point2 = GPoint.withCoordinates(3, 4);
+        expect(point1.distanceTo(point2), equals(5));
+      });
+
+      test('getClosestPoint should return itself', () {
+        final point1 = GPoint.withCoordinates(10, 20);
+        final point2 = GPoint.withCoordinates(30, 40);
+        expect(point1.getClosestPoint(point2), equals(point1));
+      });
     });
 
     group('GLine Tests', () {
@@ -159,6 +171,54 @@ void main() {
         expect(description, contains('A'));
         expect(description, contains('B'));
         expect(description, contains('Line'));
+      });
+
+      test('getClosestPoint on GInfiniteLine', () {
+        final line = GInfiniteLine(
+          GPoint.withCoordinates(0, 0),
+          GPoint.withCoordinates(100, 0),
+        );
+        final point = GPoint.withCoordinates(50, 50);
+        final closestPoint = line.getClosestPoint(point);
+        expect(closestPoint.x, closeTo(50, 0.001));
+        expect(closestPoint.y, closeTo(0, 0.001));
+      });
+
+      test('getClosestPoint on GRay', () {
+        final ray = GRay(
+          GPoint.withCoordinates(0, 0),
+          GPoint.withCoordinates(100, 0),
+        );
+        final point1 = GPoint.withCoordinates(50, 50);
+        final closestPoint1 = ray.getClosestPoint(point1);
+        expect(closestPoint1.x, closeTo(50, 0.001));
+        expect(closestPoint1.y, closeTo(0, 0.001));
+
+        final point2 = GPoint.withCoordinates(-50, 50);
+        final closestPoint2 = ray.getClosestPoint(point2);
+        expect(closestPoint2.x, closeTo(0, 0.001));
+        expect(closestPoint2.y, closeTo(0, 0.001));
+      });
+
+      test('getClosestPoint on GSegment', () {
+        final segment = GSegment(
+          GPoint.withCoordinates(0, 0),
+          GPoint.withCoordinates(100, 0),
+        );
+        final point1 = GPoint.withCoordinates(50, 50);
+        final closestPoint1 = segment.getClosestPoint(point1);
+        expect(closestPoint1.x, closeTo(50, 0.001));
+        expect(closestPoint1.y, closeTo(0, 0.001));
+
+        final point2 = GPoint.withCoordinates(-50, 50);
+        final closestPoint2 = segment.getClosestPoint(point2);
+        expect(closestPoint2.x, closeTo(0, 0.001));
+        expect(closestPoint2.y, closeTo(0, 0.001));
+
+        final point3 = GPoint.withCoordinates(150, 50);
+        final closestPoint3 = segment.getClosestPoint(point3);
+        expect(closestPoint3.x, closeTo(100, 0.001));
+        expect(closestPoint3.y, closeTo(0, 0.001));
       });
     });
 
@@ -278,6 +338,17 @@ void main() {
         expect(circle.points.contains(p1), isTrue);
         expect(circle.points.contains(p2), isTrue);
         expect(circle.points.contains(p3), isTrue);
+      });
+
+      test('getClosestPoint on GCircle', () {
+        final circle = GCircle.withPoint(
+          GPoint.withCoordinates(0, 0),
+          GPoint.withCoordinates(100, 0),
+        );
+        final point = GPoint.withCoordinates(200, 0);
+        final closestPoint = circle.getClosestPoint(point);
+        expect(closestPoint.x, closeTo(100, 0.001));
+        expect(closestPoint.y, closeTo(0, 0.001));
       });
     });
 

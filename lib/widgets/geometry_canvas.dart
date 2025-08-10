@@ -393,9 +393,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   }
 
   String _getStatusMessage() {
-    if (hoveredObject != null) {
-      return 'Snap to ${hoveredObject.runtimeType.toString().replaceAll('G', '')} ${hoveredObject?.name ?? 'ID: ${hoveredObject?.id}'}';
-    }
+    // if (hoveredObject != null) {
+    //   return 'Snap to ${hoveredObject.runtimeType.toString().replaceAll('G', '')} ${hoveredObject?.name ?? 'ID: ${hoveredObject?.id}'}';
+    // }
     switch (mode) {
       case ConstructionMode.point:
         return _getPointModeStatus();
