@@ -35,6 +35,65 @@ class GeometryEngine {
     return point;
   }
 
+  /// Creates a point constrained to lie on a line
+  GPoint createPointOnLine(GLine line, double x, double y, {String? name}) {
+    if (!x.isFinite || !y.isFinite) {
+      throw InvalidGeometricObjectException(
+        'Point coordinates must be finite numbers: ($x, $y)',
+      );
+    }
+
+    // Project the point onto the line to ensure it lies on the line
+    final projectedPoint = line.getClosestPoint(GPoint.withCoordinates(x, y));
+    final point = _factory.createFreePoint(
+      projectedPoint.x,
+      projectedPoint.y,
+      name: name,
+    );
+
+    // Add the point to the line and repository
+    line.addPoint(point);
+    _repository.addPoint(point);
+
+    // Create onLine constraint
+    final constraint = Constraint(ConstraintType.onLine, [point, line]);
+    _repository.addConstraint(constraint);
+
+    return point;
+  }
+
+  /// Creates a point constrained to lie on a circle
+  GPoint createPointOnCircle(
+    GCircle circle,
+    double x,
+    double y, {
+    String? name,
+  }) {
+    if (!x.isFinite || !y.isFinite) {
+      throw InvalidGeometricObjectException(
+        'Point coordinates must be finite numbers: ($x, $y)',
+      );
+    }
+
+    // Project the point onto the circle to ensure it lies on the circle
+    final projectedPoint = circle.getClosestPoint(GPoint.withCoordinates(x, y));
+    final point = _factory.createFreePoint(
+      projectedPoint.x,
+      projectedPoint.y,
+      name: name,
+    );
+
+    // Add the point to the circle and repository
+    circle.addPoint(point);
+    _repository.addPoint(point);
+
+    // Create onCircle constraint
+    final constraint = Constraint(ConstraintType.onCircle, [point, circle]);
+    _repository.addConstraint(constraint);
+
+    return point;
+  }
+
   /// Creates a point that is constrained to be the midpoint between two points
   GPoint createMidpoint(GPoint p1, GPoint p2) {
     if (p1 == p2) {
@@ -208,6 +267,10 @@ class GeometryEngine {
 
     final circle = _factory.createCircle(center, pointOnCircle);
     _repository.addCircle(circle);
+
+    // NOTE: Do not constrain the defining points of the circle
+    // The center and pointOnCircle should be free to drag and transform the circle
+
     return circle;
   }
 
@@ -242,6 +305,10 @@ class GeometryEngine {
 
     final circle = _factory.createThreePointCircle(p1, p2, p3);
     _repository.addCircle(circle);
+
+    // NOTE: Do not constrain the defining points of the three-point circle
+    // All three points should be free to drag and transform the circle
+
     return circle;
   }
 

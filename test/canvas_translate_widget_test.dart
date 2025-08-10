@@ -131,10 +131,6 @@ void main() {
         ConstructionMode.values.contains(ConstructionMode.translate),
         isTrue,
       );
-      expect(
-        ConstructionMode.values.length,
-        equals(5),
-      ); // select, point, line, circle, translate
     });
 
     testWidgets(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_geometry_expert/widgets/geometry_painter.dart';
 import 'package:flutter_geometry_expert/services/snap_service.dart';
+import 'package:flutter_geometry_expert/services/constraint_solver.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/geometry_engine.dart';
@@ -9,7 +10,7 @@ import '../constants/geometry_constants.dart';
 import '../exceptions/geometry_exceptions.dart';
 import '../providers/theme_provider.dart';
 
-enum ConstructionMode { select, point, line, circle, translate }
+enum ConstructionMode { select, point, line, circle, translate, drag }
 
 enum PointConstructionMode { point, intersection, midpoint }
 
@@ -27,6 +28,7 @@ class GeometryCanvas extends StatefulWidget {
 class _GeometryCanvasState extends State<GeometryCanvas> {
   final GeometryEngine engine = GeometryEngine();
   final SnapService snapService = SnapService();
+  final ConstraintSolver constraintSolver = ConstraintSolver();
   final FocusNode _focusNode = FocusNode();
   ConstructionMode mode = ConstructionMode.select;
   PointConstructionMode pointMode = PointConstructionMode.point;
@@ -35,6 +37,8 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   List<GPoint> selectedPoints = [];
   List<GeometricObject> selectedObjects = [];
   GeometricObject? hoveredObject;
+  GeometricObject? draggedObject;
+  Offset? lastDragPosition;
   bool showLineDropdown = false;
   Offset canvasTranslation = Offset.zero;
 
@@ -78,6 +82,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                         _handleTapDown(details);
                       },
                       onPanUpdate: _handlePanUpdate,
+                      onPanEnd: _handlePanEnd,
                       child: CustomPaint(
                         painter: GeometryPainter(
                           engine: engine,
@@ -157,6 +162,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       } else if (key == LogicalKeyboardKey.keyT) {
         _selectTool(ConstructionMode.translate);
         return true;
+      } else if (key == LogicalKeyboardKey.keyD) {
+        _selectTool(ConstructionMode.drag);
+        return true;
       }
     }
     return false;
@@ -197,6 +205,11 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                 Icons.pan_tool,
                 ConstructionMode.translate,
                 'Pan/Translate Canvas',
+              ),
+              _toolButton(
+                Icons.open_with,
+                ConstructionMode.drag,
+                'Drag Objects',
               ),
               Spacer(),
               IconButton(
@@ -425,6 +438,8 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         return 'Select mode - click objects to select';
       case ConstructionMode.translate:
         return 'Pan/translate mode - drag to move the canvas';
+      case ConstructionMode.drag:
+        return 'Drag mode - click and drag objects to move them';
     }
   }
 
@@ -568,6 +583,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       case ConstructionMode.translate:
         // Translation is handled by pan gestures, not tap
         break;
+      case ConstructionMode.drag:
+        _handleDragStart(position);
+        break;
     }
   }
 
@@ -577,6 +595,8 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       setState(() {
         canvasTranslation += details.delta;
       });
+    } else if (mode == ConstructionMode.drag && draggedObject != null) {
+      _handleDragUpdate(details);
     }
   }
 
@@ -586,14 +606,31 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     try {
       switch (pointMode) {
         case PointConstructionMode.point:
-          final snappedObject = snapService.getSnapPoint(
+          final highlightedObject = snapService.getHighlightedObject(
             pointer,
             engine.getAllObjects(),
           );
-          if (snappedObject is GPoint) {
-            // If the snapped point is not already in the engine, it's a new point that needs to be created.
-            if (!engine.getAllObjects().contains(snappedObject)) {
-              engine.createFreePoint(snappedObject.x, snappedObject.y);
+          final snapPoint = snapService.getSnapPoint(
+            pointer,
+            engine.getAllObjects(),
+          );
+          if (snapPoint is GPoint) {
+            if (highlightedObject is GLine) {
+              // TODO check if this method is redundant
+              engine.createPointOnLine(
+                highlightedObject,
+                snapPoint.x,
+                snapPoint.y,
+              );
+            } else if (highlightedObject is GCircle) {
+              // TODO check if this method is redundant
+              engine.createPointOnCircle(
+                highlightedObject,
+                snapPoint.x,
+                snapPoint.y,
+              );
+            } else if (!engine.getAllObjects().contains(snapPoint)) {
+              engine.createFreePoint(snapPoint.x, snapPoint.y);
             }
           }
           break;
@@ -926,5 +963,145 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  void _handleDragStart(Offset position) {
+    final pointer = _adjustPositionForTranslation(position);
+
+    // Find the object to drag - prioritize points, then lines, then circles
+    GPoint? pointToDrag;
+    GeometricObject? objectToDrag;
+
+    // Check for points first (most specific)
+    for (final point in engine.points) {
+      if (point.isSameLocation(pointer.x, pointer.y)) {
+        pointToDrag = point;
+        break;
+      }
+    }
+
+    if (pointToDrag != null) {
+      objectToDrag = pointToDrag;
+    } else {
+      // Check for lines and circles
+      objectToDrag = snapService.getHighlightedObject(
+        pointer,
+        engine.getAllObjects(),
+      );
+    }
+
+    if (objectToDrag != null) {
+      final dependencyGraph = constraintSolver.buildDependencyGraph(
+        engine.constraints,
+      );
+
+      if (constraintSolver.canDragFree(objectToDrag.id, dependencyGraph)) {
+        // Object can be dragged freely
+        setState(() {
+          draggedObject = objectToDrag;
+          lastDragPosition = position;
+        });
+      } else if (constraintSolver.canDragConstrained(
+        objectToDrag.id,
+        engine.constraints,
+      )) {
+        // Object can be dragged along its constraint (semi-free)
+        setState(() {
+          draggedObject = objectToDrag;
+          lastDragPosition = position;
+        });
+      } else {
+        _showError(
+          'Cannot drag constrained object: ${objectToDrag.name ?? objectToDrag.id}',
+        );
+      }
+    }
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    if (draggedObject == null || lastDragPosition == null) return;
+
+    final currentPosition = details.localPosition;
+    final delta = currentPosition - lastDragPosition!;
+    final adjustedDelta = Offset(delta.dx, delta.dy);
+
+    // Only drag points for now - dragging lines/circles would be more complex
+    if (draggedObject is GPoint) {
+      final point = draggedObject as GPoint;
+      final requestedX = point.x + adjustedDelta.dx;
+      final requestedY = point.y + adjustedDelta.dy;
+
+      final dependencyGraph = constraintSolver.buildDependencyGraph(
+        engine.constraints,
+      );
+
+      if (constraintSolver.canDragFree(point.id, dependencyGraph)) {
+        // Free dragging - move point directly
+        point.setXY(requestedX, requestedY);
+      } else if (constraintSolver.canDragConstrained(
+        point.id,
+        engine.constraints,
+      )) {
+        // Constrained dragging - project onto constraint surface
+        _handleConstrainedDrag(point, requestedX, requestedY);
+      }
+
+      // Update dependent objects
+      final dependentObjects = constraintSolver.findTransitiveDependents({
+        point.id,
+      }, dependencyGraph);
+
+      final affectedObjects = <int>{point.id};
+      affectedObjects.addAll(dependentObjects);
+
+      constraintSolver.updateConstraints(
+        affectedObjects,
+        engine.constraints,
+        engine.points,
+        engine.lines,
+        engine.circles,
+      );
+
+      setState(() {
+        lastDragPosition = currentPosition;
+      });
+    }
+  }
+
+  void _handleConstrainedDrag(
+    GPoint point,
+    double requestedX,
+    double requestedY,
+  ) {
+    // Find the constraint that applies to this point
+    for (final constraint in engine.constraints) {
+      if (constraint.elements.isNotEmpty &&
+          constraint.elements[0].id == point.id) {
+        if (constraint.type == ConstraintType.onLine) {
+          // Project onto line
+          final line = constraint.elements[1] as GLine;
+          final requestedPoint = GPoint.withCoordinates(requestedX, requestedY);
+          final projectedPoint = line.getClosestPoint(requestedPoint);
+          point.setXY(projectedPoint.x, projectedPoint.y);
+          return;
+        } else if (constraint.type == ConstraintType.onCircle) {
+          // Project onto circle
+          final circle = constraint.elements[1] as GCircle;
+          final requestedPoint = GPoint.withCoordinates(requestedX, requestedY);
+          final projectedPoint = circle.getClosestPoint(requestedPoint);
+          point.setXY(projectedPoint.x, projectedPoint.y);
+          return;
+        }
+      }
+    }
+  }
+
+  void _handlePanEnd(DragEndDetails details) {
+    if (mode == ConstructionMode.drag) {
+      setState(() {
+        draggedObject = null;
+        lastDragPosition = null;
+      });
+    }
   }
 }
