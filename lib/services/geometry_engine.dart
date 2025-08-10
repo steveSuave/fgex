@@ -35,6 +35,53 @@ class GeometryEngine {
     return point;
   }
 
+  /// Creates a point that is constrained to be the midpoint between two points
+  GPoint createMidpoint(GPoint p1, GPoint p2) {
+    if (p1 == p2) {
+      throw InvalidConstructionException(
+        'Cannot create midpoint with identical points',
+      );
+    }
+
+    if (p1.isSameLocation(p2.x, p2.y)) {
+      throw InvalidConstructionException(
+        'Cannot create midpoint between points at same location: ${p1.name ?? p1.id} and ${p2.name ?? p2.id}',
+      );
+    }
+
+    // Calculate midpoint coordinates
+    final midX = (p1.x + p2.x) / 2;
+    final midY = (p1.y + p2.y) / 2;
+
+    // Check if a point already exists at this location
+    final existingPoint = _repository.selectPointAt(
+      midX,
+      midY,
+      tolerance: GeometryConstants.pointLocationTolerance,
+    );
+
+    if (existingPoint != null) {
+      // Add constraint to existing point
+      final constraint = Constraint(ConstraintType.midpoint, [
+        existingPoint,
+        p1,
+        p2,
+      ]);
+      _repository.addConstraint(constraint);
+      return existingPoint;
+    }
+
+    // Create new midpoint
+    final midpoint = _factory.createFreePoint(midX, midY);
+
+    // Add constraint
+    final constraint = Constraint(ConstraintType.midpoint, [midpoint, p1, p2]);
+
+    _repository.addConstraint(constraint);
+    _repository.addPoint(midpoint);
+    return midpoint;
+  }
+
   /// Creates an infinite line between two points
   GInfiniteLine createInfiniteLine(GPoint p1, GPoint p2) {
     if (p1 == p2) {
@@ -96,6 +143,53 @@ class GeometryEngine {
     final segment = _factory.createSegment(p1, p2);
     _repository.addLine(segment);
     return segment;
+  }
+
+  /// Creates an infinite line perpendicular to a given line through a point
+  GInfiniteLine createPerpendicularLine(GPoint point, GLine line) {
+    if (line.points.length < 2) {
+      throw InvalidConstructionException('Line must have at least 2 points');
+    }
+
+    // Calculate the direction vector of the original line
+    double dx = line.points[1].x - line.points[0].x;
+    double dy = line.points[1].y - line.points[0].y;
+
+    // Perpendicular direction vector (rotate 90 degrees)
+    double perpDx = -dy;
+    double perpDy = dx;
+
+    // Normalize the perpendicular direction
+    double length = math.sqrt(perpDx * perpDx + perpDy * perpDy);
+    if (length < GeometryConstants.pointLocationTolerance) {
+      throw InvalidConstructionException(
+        'Cannot create perpendicular to degenerate line',
+      );
+    }
+
+    perpDx /= length;
+    perpDy /= length;
+
+    // Create a second point on the perpendicular line
+    double secondX =
+        point.x + perpDx * 100; // Arbitrary distance for visualization
+    double secondY = point.y + perpDy * 100;
+
+    // Create a temporary point for line construction
+    final tempPoint = _factory.createFreePoint(secondX, secondY, name: null);
+
+    // Create the perpendicular line
+    final perpLine = _factory.createInfiniteLine(point, tempPoint);
+
+    // Create the perpendicular constraint
+    final constraint = Constraint(ConstraintType.perpendicular, [
+      perpLine,
+      line,
+    ]);
+
+    _repository.addLine(perpLine);
+    _repository.addConstraint(constraint);
+    return perpLine;
   }
 
   /// Creates a circle with center and point on circumference

@@ -11,9 +11,9 @@ import '../providers/theme_provider.dart';
 
 enum ConstructionMode { select, point, line, circle, translate }
 
-enum PointConstructionMode { point, intersection }
+enum PointConstructionMode { point, intersection, midpoint }
 
-enum LineConstructionMode { infinite, ray, segment }
+enum LineConstructionMode { infinite, ray, segment, perpendicular }
 
 enum CircleConstructionMode { centerPoint, threePoint }
 
@@ -125,6 +125,13 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       } else if (key == LogicalKeyboardKey.keyR) {
         _selectTool(ConstructionMode.line, null, LineConstructionMode.ray);
         return true;
+      } else if (key == LogicalKeyboardKey.digit2) {
+        _selectTool(
+          ConstructionMode.line,
+          null,
+          LineConstructionMode.perpendicular,
+        );
+        return true;
       } else if (key == LogicalKeyboardKey.keyC) {
         _selectTool(
           ConstructionMode.circle,
@@ -143,6 +150,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         return true;
       } else if (key == LogicalKeyboardKey.keyI) {
         _selectTool(ConstructionMode.point, PointConstructionMode.intersection);
+        return true;
+      } else if (key == LogicalKeyboardKey.keyM) {
+        _selectTool(ConstructionMode.point, PointConstructionMode.midpoint);
         return true;
       } else if (key == LogicalKeyboardKey.keyT) {
         _selectTool(ConstructionMode.translate);
@@ -264,6 +274,10 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
           value: PointConstructionMode.intersection,
           child: Text('Intersection'),
         ),
+        PopupMenuItem<PointConstructionMode>(
+          value: PointConstructionMode.midpoint,
+          child: Text('Midpoint'),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -305,6 +319,10 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         PopupMenuItem<LineConstructionMode>(
           value: LineConstructionMode.segment,
           child: Text('Segment'),
+        ),
+        PopupMenuItem<LineConstructionMode>(
+          value: LineConstructionMode.perpendicular,
+          child: Text('Perpendicular'),
         ),
       ],
       child: Consumer<ThemeProvider>(
@@ -415,6 +433,10 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
       return 'Click to create a point';
     }
 
+    if (pointMode == PointConstructionMode.midpoint) {
+      return _getMidpointModeStatus();
+    }
+
     // Intersection mode
     if (selectedObjects.isEmpty) {
       return 'Click on first object to intersect';
@@ -427,11 +449,20 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     return 'Two objects selected - creating intersections';
   }
 
+  String _getMidpointModeStatus() {
+    if (selectedPoints.isEmpty) {
+      return 'Select first point for midpoint';
+    }
+
+    return 'Select second point for midpoint';
+  }
+
   String _getLineTypeName() {
     const Map<LineConstructionMode, String> lineTypeNames = {
       LineConstructionMode.infinite: 'line',
       LineConstructionMode.ray: 'ray',
       LineConstructionMode.segment: 'segment',
+      LineConstructionMode.perpendicular: 'perpendicular',
     };
 
     return lineTypeNames[lineMode] ?? 'line';
@@ -440,11 +471,30 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
   String _getLineModeStatus() {
     final String lineTypeName = _getLineTypeName();
 
+    if (lineMode == LineConstructionMode.perpendicular) {
+      return _getPerpendicularStatus();
+    }
+
     if (selectedPoints.isEmpty) {
       return 'Select first point for $lineTypeName';
     }
 
     return 'Select second point for $lineTypeName';
+  }
+
+  String _getPerpendicularStatus() {
+    final hasPoint = selectedPoints.isNotEmpty;
+    final hasLine = selectedObjects.any((obj) => obj is GLine);
+
+    if (!hasPoint && !hasLine) {
+      return 'Select a point and a line (any order)';
+    } else if (hasPoint && !hasLine) {
+      return 'Select a line for perpendicular';
+    } else if (!hasPoint && hasLine) {
+      return 'Select a point for perpendicular';
+    }
+
+    return 'Creating perpendicular line...';
   }
 
   String _getCircleModeStatus() {
@@ -550,6 +600,9 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         case PointConstructionMode.intersection:
           _handleIntersection(pointer.offset);
           break;
+        case PointConstructionMode.midpoint:
+          _handleMidpointConstruction(pointer);
+          break;
       }
 
       setState(() {});
@@ -558,8 +611,46 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     }
   }
 
+  void _handleMidpointConstruction(GPoint pointer) {
+    final snappedObject = snapService.getSnapPoint(
+      pointer,
+      engine.getAllObjects(),
+    );
+
+    if (snappedObject is GPoint) {
+      if (!engine.getAllObjects().contains(snappedObject)) {
+        final newPoint = engine.createFreePoint(
+          snappedObject.x,
+          snappedObject.y,
+        );
+        selectedPoints.add(newPoint);
+      } else {
+        selectedPoints.add(snappedObject);
+      }
+    } else {
+      _showError('Midpoints must be defined by points.');
+      return;
+    }
+
+    if (selectedPoints.length == 2) {
+      try {
+        engine.createMidpoint(selectedPoints[0], selectedPoints[1]);
+        selectedPoints.clear();
+      } on GeometryException catch (e) {
+        _showError('Error creating midpoint: ${e.message}');
+        selectedPoints.clear();
+      }
+    }
+  }
+
   void _handleLineConstruction(Offset position) {
     final pointer = _adjustPositionForTranslation(position);
+
+    if (lineMode == LineConstructionMode.perpendicular) {
+      _handlePerpendicularConstruction(pointer);
+      return;
+    }
+
     final snappedObject = snapService.getSnapPoint(
       pointer,
       engine.getAllObjects(),
@@ -592,11 +683,68 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
           case LineConstructionMode.segment:
             engine.createSegment(selectedPoints[0], selectedPoints[1]);
             break;
+          case LineConstructionMode.perpendicular:
+            // Handled separately above
+            break;
         }
         selectedPoints.clear();
       } on GeometryException catch (e) {
         _showError('Error creating line: ${e.message}');
         selectedPoints.clear();
+      }
+    }
+
+    setState(() {});
+  }
+
+  void _handlePerpendicularConstruction(GPoint pointer) {
+    // Try to snap to any geometric object (point, line, or circle)
+    final allObjects = engine.getAllObjects();
+
+    // Check for point snap first
+    final snappedPoint = snapService.getSnapPoint(pointer, allObjects);
+    if (snappedPoint is GPoint && allObjects.contains(snappedPoint)) {
+      // If we clicked on an existing point, add it to selected points
+      if (!selectedPoints.contains(snappedPoint)) {
+        selectedPoints.add(snappedPoint);
+      }
+    } else {
+      // Check if we clicked on a line
+      final clickedLine = engine.selectLineAt(pointer.x, pointer.y);
+      if (clickedLine != null) {
+        // If we clicked on a line, add it to selected objects
+        if (!selectedObjects.contains(clickedLine)) {
+          selectedObjects.add(clickedLine);
+        }
+      } else {
+        // Only create a new point if we don't already have one selected
+        if (selectedPoints.isEmpty) {
+          final newPoint = engine.createFreePoint(pointer.x, pointer.y);
+          selectedPoints.add(newPoint);
+        }
+        // If we already have a point selected and clicked in empty space, do nothing
+        // This prevents creating unnecessary points while waiting for line selection
+      }
+    }
+
+    // Check if we have both a point and a line selected
+    final hasPoint = selectedPoints.isNotEmpty;
+    final hasLine = selectedObjects.any((obj) => obj is GLine);
+
+    if (hasPoint && hasLine) {
+      try {
+        final point = selectedPoints.first;
+        final line = selectedObjects.firstWhere((obj) => obj is GLine) as GLine;
+
+        engine.createPerpendicularLine(point, line);
+
+        // Clear selections
+        selectedPoints.clear();
+        selectedObjects.clear();
+      } on GeometryException catch (e) {
+        _showError('Error creating perpendicular line: ${e.message}');
+        selectedPoints.clear();
+        selectedObjects.clear();
       }
     }
 

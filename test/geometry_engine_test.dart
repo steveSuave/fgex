@@ -46,6 +46,75 @@ void main() {
       });
     });
 
+    group('Midpoint Creation', () {
+      test('should create midpoint between two distinct points', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 20.0);
+
+        final midpoint = engine.createMidpoint(p1, p2);
+
+        expect(midpoint.x, equals(5.0));
+        expect(midpoint.y, equals(10.0));
+        expect(engine.points.length, equals(3)); // p1, p2, midpoint
+        expect(engine.constraints.length, equals(1));
+      });
+
+      test('should throw exception for identical points', () {
+        final point = engine.createFreePoint(5.0, 5.0);
+
+        expect(
+          () => engine.createMidpoint(point, point),
+          throwsA(isA<InvalidConstructionException>()),
+        );
+      });
+
+      test('should throw exception for points at same location', () {
+        final p1 = engine.createFreePoint(5.0, 5.0);
+        final p2 = engine.createFreePoint(5.0, 5.0);
+
+        expect(
+          () => engine.createMidpoint(p1, p2),
+          throwsA(isA<InvalidConstructionException>()),
+        );
+      });
+
+      test('should reuse existing point at midpoint location', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 10.0);
+        final existingPoint = engine.createFreePoint(5.0, 5.0);
+        final initialPointCount = engine.points.length;
+
+        final midpoint = engine.createMidpoint(p1, p2);
+
+        expect(midpoint, equals(existingPoint));
+        expect(
+          engine.points.length,
+          equals(initialPointCount),
+        ); // No new point created
+        expect(engine.constraints.length, equals(1));
+      });
+
+      test('should create midpoint with fractional coordinates', () {
+        final p1 = engine.createFreePoint(1.0, 3.0);
+        final p2 = engine.createFreePoint(4.0, 7.0);
+
+        final midpoint = engine.createMidpoint(p1, p2);
+
+        expect(midpoint.x, equals(2.5));
+        expect(midpoint.y, equals(5.0));
+      });
+
+      test('should create midpoint with negative coordinates', () {
+        final p1 = engine.createFreePoint(-10.0, -5.0);
+        final p2 = engine.createFreePoint(10.0, 5.0);
+
+        final midpoint = engine.createMidpoint(p1, p2);
+
+        expect(midpoint.x, equals(0.0));
+        expect(midpoint.y, equals(0.0));
+      });
+    });
+
     group('Line Creation', () {
       test('should create line between two distinct points', () {
         final p1 = engine.createFreePoint(0.0, 0.0);
@@ -87,6 +156,107 @@ void main() {
 
         expect(identical(line1, line2), isTrue);
         expect(engine.lines.length, equals(1));
+      });
+    });
+
+    group('Perpendicular Line Creation', () {
+      test('should create perpendicular line to horizontal line', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 0.0);
+        final originalLine = engine.createInfiniteLine(p1, p2);
+
+        final pointForPerp = engine.createFreePoint(5.0, 5.0);
+        final perpLine = engine.createPerpendicularLine(
+          pointForPerp,
+          originalLine,
+        );
+
+        expect(perpLine.points[0], equals(pointForPerp));
+        expect(engine.lines.length, equals(2));
+        expect(engine.constraints.length, equals(1));
+        expect(engine.constraints.first.type.name, equals('perpendicular'));
+      });
+
+      test('should create perpendicular line to vertical line', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(0.0, 10.0);
+        final originalLine = engine.createInfiniteLine(p1, p2);
+
+        final pointForPerp = engine.createFreePoint(3.0, 5.0);
+        final perpLine = engine.createPerpendicularLine(
+          pointForPerp,
+          originalLine,
+        );
+
+        expect(perpLine.points[0], equals(pointForPerp));
+        expect(engine.lines.length, equals(2));
+        expect(engine.constraints.length, equals(1));
+        expect(engine.constraints.first.type.name, equals('perpendicular'));
+      });
+
+      test('should create perpendicular line to diagonal line', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 10.0);
+        final originalLine = engine.createInfiniteLine(p1, p2);
+
+        final pointForPerp = engine.createFreePoint(0.0, 10.0);
+        final perpLine = engine.createPerpendicularLine(
+          pointForPerp,
+          originalLine,
+        );
+
+        expect(perpLine.points[0], equals(pointForPerp));
+        expect(engine.lines.length, equals(2));
+        expect(engine.constraints.length, equals(1));
+        expect(engine.constraints.first.type.name, equals('perpendicular'));
+
+        // Verify perpendicular direction: original line has direction (1,1), perp should have direction (-1,1) or (1,-1)
+        final origDx = originalLine.points[1].x - originalLine.points[0].x;
+        final origDy = originalLine.points[1].y - originalLine.points[0].y;
+        final perpDx = perpLine.points[1].x - perpLine.points[0].x;
+        final perpDy = perpLine.points[1].y - perpLine.points[0].y;
+
+        // Dot product should be close to zero for perpendicular vectors
+        final dotProduct = origDx * perpDx + origDy * perpDy;
+        expect(dotProduct.abs(), lessThan(0.001));
+      });
+
+      test('should work with ray as base line', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(5.0, 0.0);
+        final ray = engine.createRay(p1, p2);
+
+        final pointForPerp = engine.createFreePoint(2.0, 3.0);
+        final perpLine = engine.createPerpendicularLine(pointForPerp, ray);
+
+        expect(perpLine.points[0], equals(pointForPerp));
+        expect(engine.lines.length, equals(2));
+        expect(engine.constraints.length, equals(1));
+      });
+
+      test('should work with segment as base line', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(8.0, 6.0);
+        final segment = engine.createSegment(p1, p2);
+
+        final pointForPerp = engine.createFreePoint(4.0, 2.0);
+        final perpLine = engine.createPerpendicularLine(pointForPerp, segment);
+
+        expect(perpLine.points[0], equals(pointForPerp));
+        expect(engine.lines.length, equals(2));
+        expect(engine.constraints.length, equals(1));
+      });
+
+      test('should throw exception for degenerate line', () {
+        final p1 = engine.createFreePoint(5.0, 5.0);
+        final p2 = engine.createFreePoint(5.0, 5.0);
+
+        // This should create an invalid line that our perpendicular method should reject
+        expect(() {
+          final invalidLine = engine.createInfiniteLine(p1, p2);
+          final pointForPerp = engine.createFreePoint(0.0, 0.0);
+          engine.createPerpendicularLine(pointForPerp, invalidLine);
+        }, throwsA(isA<InvalidConstructionException>()));
       });
     });
 
