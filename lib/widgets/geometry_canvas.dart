@@ -195,53 +195,57 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
         return Container(
           height: GeometryConstants.toolbarHeight,
           color: themeProvider.toolbarBackground,
-          child: Row(
-            children: [
-              _toolButton(Icons.mouse, ConstructionMode.select, 'Select'),
-              _buildPointToolButton(),
-              _buildLineToolButton(),
-              _buildCircleToolButton(),
-              _toolButton(
-                Icons.pan_tool,
-                ConstructionMode.translate,
-                'Pan/Translate Canvas',
-              ),
-              _toolButton(
-                Icons.open_with,
-                ConstructionMode.drag,
-                'Drag Objects',
-              ),
-              Spacer(),
-              IconButton(
-                icon: Icon(Icons.clear),
-                onPressed: () {
-                  setState(() {
-                    engine.clear();
-                    selectedPoints.clear();
-                    selectedObjects.clear();
-                    hoveredObject = null;
-                    canvasTranslation = Offset.zero;
-                  });
-                },
-              ),
-              Consumer<ThemeProvider>(
-                builder: (context, themeProvider, child) {
-                  return IconButton(
-                    icon: Icon(
-                      themeProvider.isDarkMode
-                          ? Icons.light_mode
-                          : Icons.dark_mode,
-                    ),
-                    onPressed: () {
-                      themeProvider.toggleTheme();
-                    },
-                    tooltip: themeProvider.isDarkMode
-                        ? 'Switch to Light Mode'
-                        : 'Switch to Dark Mode',
-                  );
-                },
-              ),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min, // Add this line
+              children: [
+                _toolButton(Icons.mouse, ConstructionMode.select, 'Select'),
+                _buildPointToolButton(),
+                _buildLineToolButton(),
+                _buildCircleToolButton(),
+                _toolButton(
+                  Icons.pan_tool,
+                  ConstructionMode.drag,
+                  'Drag Objects',
+                ),
+                                _toolButton(
+                  Icons.open_with,
+                  ConstructionMode.translate,
+                  'Pan/Translate Canvas',
+                ),
+                SizedBox(width: 20), // Replace Spacer() with fixed width
+                IconButton(
+                  icon: Icon(Icons.clear),
+                  onPressed: () {
+                    setState(() {
+                      engine.clear();
+                      selectedPoints.clear();
+                      selectedObjects.clear();
+                      hoveredObject = null;
+                      canvasTranslation = Offset.zero;
+                    });
+                  },
+                ),
+                Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, child) {
+                    return IconButton(
+                      icon: Icon(
+                        themeProvider.isDarkMode
+                            ? Icons.light_mode
+                            : Icons.dark_mode,
+                      ),
+                      onPressed: () {
+                        themeProvider.toggleTheme();
+                      },
+                      tooltip: themeProvider.isDarkMode
+                          ? 'Switch to Light Mode'
+                          : 'Switch to Dark Mode',
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -304,7 +308,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              Icons.circle_outlined,
+              Icons.circle,
               color: mode == ConstructionMode.point
                   ? themeProvider.toolButtonActiveIcon
                   : themeProvider.toolButtonInactiveIcon,
@@ -388,7 +392,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              Icons.circle,
+              Icons.circle_outlined,
               color: mode == ConstructionMode.circle
                   ? themeProvider.toolButtonActiveIcon
                   : themeProvider.toolButtonInactiveIcon,
