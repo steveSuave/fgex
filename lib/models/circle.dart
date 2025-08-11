@@ -4,10 +4,10 @@ import 'geometric_object.dart';
 import 'point.dart';
 
 enum CircleType {
-  pointBased, // Point circle - center + point on circle (formerly PCIRCLE = 0)
-  radius, // Radius circle (formerly RCIRCLE = 1)
-  special, // Special circle (formerly SCIRCLE = 2)
-  threePoint, // Circle through three points
+  pointBased, // center + point on circle
+  radius, // center + radius
+  special, // special circle
+  threePoint, // circle through three points
 }
 
 class GCircle extends GeometricObject {

@@ -209,7 +209,7 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                   ConstructionMode.drag,
                   'Drag Objects',
                 ),
-                                _toolButton(
+                _toolButton(
                   Icons.open_with,
                   ConstructionMode.translate,
                   'Pan/Translate Canvas',

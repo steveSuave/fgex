@@ -59,14 +59,17 @@ class GeometryPainter extends CustomPainter {
     for (final line in engine.lines) {
       final isSelected = selectedObjects.contains(line);
       final isHovered = hoveredObject == line;
-      _drawLine(
-        canvas,
-        line,
-        size,
-        isHovered
-            ? hoveredLinePaint
-            : (isSelected ? selectedLinePaint : linePaint),
-      );
+
+      Paint paintToUse;
+      if (isHovered) {
+        paintToUse = hoveredLinePaint;
+      } else if (isSelected) {
+        paintToUse = selectedLinePaint;
+      } else {
+        paintToUse = linePaint;
+      }
+
+      _drawLine(canvas, line, size, paintToUse);
     }
 
     // Draw circles
@@ -91,12 +94,19 @@ class GeometryPainter extends CustomPainter {
       if (radius > 0) {
         final isSelected = selectedObjects.contains(circle);
         final isHovered = hoveredObject == circle;
+        Paint paintToUse;
+        if (isHovered) {
+          paintToUse = hoveredCirclePaint;
+        } else if (isSelected) {
+          paintToUse = selectedCirclePaint;
+        } else {
+          paintToUse = circlePaint;
+        }
+
         canvas.drawCircle(
           Offset(circle.center.x, circle.center.y),
           radius,
-          isHovered
-              ? hoveredCirclePaint
-              : (isSelected ? selectedCirclePaint : circlePaint),
+          paintToUse,
         );
       }
     }
