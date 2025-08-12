@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/geometry_canvas.dart';
 import 'providers/theme_provider.dart';
+import 'controllers/geometry_controller.dart'; // Import the new controller
 
 void main() {
   runApp(const GeometryExpertApp());
@@ -13,8 +14,11 @@ class GeometryExpertApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ThemeProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider(create: (context) => GeometryController()),
+      ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(

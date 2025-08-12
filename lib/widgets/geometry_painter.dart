@@ -1,34 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_geometry_expert/providers/theme_provider.dart';
 import '../models/models.dart';
 import '../services/geometry_engine.dart';
 import '../constants/geometry_constants.dart';
 
 // lib/widgets/geometry_painter.dart
+// In geometry_painter.dart
 class GeometryPainter extends CustomPainter {
   final GeometryEngine engine;
   final List<GPoint> selectedPoints;
   final List<GeometricObject> selectedObjects;
   final GeometricObject? hoveredObject;
-  final Color lineColor;
-  final Color selectedLineColor;
-  final Color pointColor;
-  final Color selectedPointColor;
-  final Color hoveredPointColor;
-  final Color textColor;
+  final ThemeProvider themeProvider;
   final Offset canvasTranslation;
 
   GeometryPainter({
     required this.engine,
     required this.selectedPoints,
     required this.selectedObjects,
-    required this.lineColor,
-    required this.selectedLineColor,
-    required this.pointColor,
-    required this.selectedPointColor,
-    required this.hoveredPointColor,
-    required this.textColor,
+    required this.hoveredObject,
+    required this.themeProvider,
     required this.canvasTranslation,
-    this.hoveredObject,
   });
 
   @override
@@ -41,18 +33,18 @@ class GeometryPainter extends CustomPainter {
     canvas.translate(canvasTranslation.dx, canvasTranslation.dy);
     // Draw lines
     final linePaint = Paint()
-      ..color = lineColor
+      ..color = themeProvider.geometryLineColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth
       ..style = PaintingStyle.stroke;
 
     final selectedLinePaint = Paint()
-      ..color = selectedLineColor
+      ..color = themeProvider.geometrySelectedLineColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
       ..style = PaintingStyle.stroke;
 
     final hoveredLinePaint = Paint()
-      ..color =
-          hoveredPointColor // Use hovered color for lines too
+      ..color = themeProvider
+          .geometryHoveredPointColor // Use hovered color for lines too
       ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
       ..style = PaintingStyle.stroke;
 
@@ -74,18 +66,17 @@ class GeometryPainter extends CustomPainter {
 
     // Draw circles
     final circlePaint = Paint()
-      ..color = lineColor
+      ..color = themeProvider.geometryLineColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth
       ..style = PaintingStyle.stroke;
 
     final selectedCirclePaint = Paint()
-      ..color = selectedLineColor
+      ..color = themeProvider.geometrySelectedLineColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
       ..style = PaintingStyle.stroke;
 
     final hoveredCirclePaint = Paint()
-      ..color =
-          hoveredPointColor // Use hovered color for circles too
+      ..color = themeProvider.geometryHoveredPointColor
       ..strokeWidth = GeometryConstants.defaultStrokeWidth * 2
       ..style = PaintingStyle.stroke;
 
@@ -113,15 +104,15 @@ class GeometryPainter extends CustomPainter {
 
     // Draw points
     final pointPaint = Paint()
-      ..color = pointColor
+      ..color = themeProvider.geometryPointColor
       ..style = PaintingStyle.fill;
 
     final selectedPointPaint = Paint()
-      ..color = selectedPointColor
+      ..color = themeProvider.geometrySelectedPointColor
       ..style = PaintingStyle.fill;
 
     final hoveredPointPaint = Paint()
-      ..color = hoveredPointColor
+      ..color = themeProvider.geometryHoveredPointColor
       ..style = PaintingStyle.fill;
 
     for (final point in engine.points) {
@@ -143,7 +134,7 @@ class GeometryPainter extends CustomPainter {
         text: TextSpan(
           text: point.toString(),
           style: TextStyle(
-            color: textColor,
+            color: themeProvider.geometryTextColor,
             fontSize: GeometryConstants.pointNameFontSize,
           ),
         ),
