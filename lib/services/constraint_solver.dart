@@ -3,14 +3,21 @@ import 'dart:math' as math;
 import '../models/models.dart';
 import 'intersection_calculator.dart';
 
+class DependencyEntry {
+  Set<int> dependents;
+  Constraint constraint;
+
+  DependencyEntry(this.constraint, this.dependents);
+}
+
 /// Handles constraint solving and dependency propagation for drag operations
 class ConstraintSolver {
   final IntersectionCalculator _intersectionCalculator =
       IntersectionCalculator();
 
   /// Builds a dependency graph from constraints
-  Map<int, Set<int>> buildDependencyGraph(List<Constraint> constraints) {
-    final graph = <int, Set<int>>{};
+  Map<int, DependencyEntry> buildDependencyGraph(List<Constraint> constraints) {
+    final graph = <int, DependencyEntry>{};
 
     for (final constraint in constraints) {
       switch (constraint.type) {
@@ -19,7 +26,7 @@ class ConstraintSolver {
           final midpoint = constraint.elements[0] as GPoint;
           final p1 = constraint.elements[1] as GPoint;
           final p2 = constraint.elements[2] as GPoint;
-          graph[midpoint.id] = {p1.id, p2.id};
+          graph[midpoint.id] = DependencyEntry(constraint, {p1.id, p2.id});
           break;
 
         case ConstraintType.interLL:
@@ -30,7 +37,7 @@ class ConstraintSolver {
           final deps = <int>{};
           deps.addAll(_getLineDependencies(line1));
           deps.addAll(_getLineDependencies(line2));
-          graph[intersection.id] = deps;
+          graph[intersection.id] = DependencyEntry(constraint, deps);
           break;
 
         case ConstraintType.interLC:
@@ -41,7 +48,7 @@ class ConstraintSolver {
           final deps = <int>{};
           deps.addAll(_getLineDependencies(line));
           deps.addAll(_getCircleDependencies(circle));
-          graph[intersection.id] = deps;
+          graph[intersection.id] = DependencyEntry(constraint, deps);
           break;
 
         case ConstraintType.interCC:
@@ -52,21 +59,27 @@ class ConstraintSolver {
           final deps = <int>{};
           deps.addAll(_getCircleDependencies(circle1));
           deps.addAll(_getCircleDependencies(circle2));
-          graph[intersection.id] = deps;
+          graph[intersection.id] = DependencyEntry(constraint, deps);
           break;
 
         case ConstraintType.onLine:
           // Point on line depends on the line
           final point = constraint.elements[0] as GPoint;
           final line = constraint.elements[1] as GLine;
-          graph[point.id] = _getLineDependencies(line);
+          graph[point.id] = DependencyEntry(
+            constraint,
+            _getLineDependencies(line),
+          );
           break;
 
         case ConstraintType.onCircle:
           // Point on circle depends on the circle
           final point = constraint.elements[0] as GPoint;
           final circle = constraint.elements[1] as GCircle;
-          graph[point.id] = _getCircleDependencies(circle);
+          graph[point.id] = DependencyEntry(
+            constraint,
+            _getCircleDependencies(circle),
+          );
           break;
 
         case ConstraintType.perpendicular:
@@ -75,10 +88,10 @@ class ConstraintSolver {
           final refLine = constraint.elements[1] as GLine;
           final deps = <int>{};
           deps.addAll(_getLineDependencies(refLine));
-          graph[perpLine.id] = deps;
+          graph[perpLine.id] = DependencyEntry(constraint, deps);
           // Also make the perpendicular line's points dependent on the reference line
           for (final point in perpLine.points) {
-            graph[point.id] = deps;
+            graph[point.id] = DependencyEntry(constraint, deps);
           }
           break;
 
@@ -88,10 +101,10 @@ class ConstraintSolver {
           final refLine = constraint.elements[1] as GLine;
           final deps = <int>{};
           deps.addAll(_getLineDependencies(refLine));
-          graph[parallelLine.id] = deps;
+          graph[parallelLine.id] = DependencyEntry(constraint, deps);
           // Also make the parallel line's points dependent on the reference line
           for (final point in parallelLine.points) {
-            graph[point.id] = deps;
+            graph[point.id] = DependencyEntry(constraint, deps);
           }
           break;
 
@@ -126,7 +139,7 @@ class ConstraintSolver {
   /// Finds all objects that transitively depend on a given set of objects
   Set<int> findTransitiveDependents(
     Set<int> changedObjects,
-    Map<int, Set<int>> dependencyGraph,
+    Map<int, DependencyEntry> dependencyGraph,
   ) {
     final allDependents = <int>{};
     final toProcess = <int>{}..addAll(changedObjects);
@@ -137,7 +150,7 @@ class ConstraintSolver {
 
       // Find all objects that depend on the current object
       for (final entry in dependencyGraph.entries) {
-        if (entry.value.contains(current) &&
+        if (entry.value.dependents.contains(current) &&
             !allDependents.contains(entry.key)) {
           allDependents.add(entry.key);
           toProcess.add(entry.key);
@@ -149,8 +162,13 @@ class ConstraintSolver {
   }
 
   /// Determines if an object can be freely dragged (has no constraints making it dependent)
-  bool canDragFree(int objectId, Map<int, Set<int>> dependencyGraph) {
-    return !dependencyGraph.containsKey(objectId);
+  bool canDragFree(int objectId, Map<int, DependencyEntry> dependencyGraph) {
+    if (!dependencyGraph.containsKey(objectId)) {
+      return true;
+    }
+
+    // Perpendicular s can be dragged freely
+    return dependencyGraph[objectId]?.constraint.type == ConstraintType.perpendicular;
   }
 
   /// Determines if an object can be dragged in a constrained way (e.g., sliding along a line/circle)

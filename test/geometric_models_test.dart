@@ -82,8 +82,8 @@ void main() {
         GPoint.resetParamCounter();
         final point = GPoint.withCoordinates(2.0, 2.0);
 
-        expect(point.x1.xIndex, equals(1));
-        expect(point.y1.xIndex, equals(2));
+        expect(point.x1.youth, equals(1));
+        expect(point.y1.youth, equals(2));
       });
 
       test('should calculate distance to another point', () {

@@ -1,10 +1,10 @@
 // lib/models/param.dart
 class Param {
-  int xIndex;
+  int youth;
   double value;
   bool isStatic;
 
-  Param(this.xIndex, this.value, {this.isStatic = false});
+  Param(this.youth, this.value, {this.isStatic = false});
 
   void setParameterStatic() {
     isStatic = true;

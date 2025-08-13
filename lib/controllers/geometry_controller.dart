@@ -298,6 +298,10 @@ class GeometryController extends ChangeNotifier {
   }
 
   void _handleMidpointConstruction(GPoint pointer) {
+    final highlightedObject = snapService.getHighlightedObject(
+      pointer,
+      engine.getAllObjects(),
+    );
     final snappedObject = snapService.getSnapPoint(
       pointer,
       engine.getAllObjects(),
@@ -305,11 +309,29 @@ class GeometryController extends ChangeNotifier {
 
     if (snappedObject is GPoint) {
       if (!engine.getAllObjects().contains(snappedObject)) {
-        final newPoint = engine.createFreePoint(
-          snappedObject.x,
-          snappedObject.y,
-        );
-        _selectedPoints.add(newPoint);
+        // Create constrained point if there's a highlighted object
+        if (highlightedObject is GLine) {
+          final newPoint = engine.createPointOnLine(
+            highlightedObject,
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        } else if (highlightedObject is GCircle) {
+          final newPoint = engine.createPointOnCircle(
+            highlightedObject,
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        } else {
+          // Create free point if no highlighted object
+          final newPoint = engine.createFreePoint(
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        }
       } else {
         _selectedPoints.add(snappedObject);
       }
@@ -337,6 +359,10 @@ class GeometryController extends ChangeNotifier {
       return;
     }
 
+    final highlightedObject = snapService.getHighlightedObject(
+      pointer,
+      engine.getAllObjects(),
+    );
     final snappedObject = snapService.getSnapPoint(
       pointer,
       engine.getAllObjects(),
@@ -344,11 +370,29 @@ class GeometryController extends ChangeNotifier {
 
     if (snappedObject is GPoint) {
       if (!engine.getAllObjects().contains(snappedObject)) {
-        final newPoint = engine.createFreePoint(
-          snappedObject.x,
-          snappedObject.y,
-        );
-        _selectedPoints.add(newPoint);
+        // Create constrained point if there's a highlighted object
+        if (highlightedObject is GLine) {
+          final newPoint = engine.createPointOnLine(
+            highlightedObject,
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        } else if (highlightedObject is GCircle) {
+          final newPoint = engine.createPointOnCircle(
+            highlightedObject,
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        } else {
+          // Create free point if no highlighted object
+          final newPoint = engine.createFreePoint(
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        }
       } else {
         _selectedPoints.add(snappedObject);
       }
@@ -382,6 +426,10 @@ class GeometryController extends ChangeNotifier {
 
   void _handlePerpendicularConstruction(GPoint pointer) {
     final allObjects = engine.getAllObjects();
+    final highlightedObject = snapService.getHighlightedObject(
+      pointer,
+      allObjects,
+    );
 
     final snappedPoint = snapService.getSnapPoint(pointer, allObjects);
     if (snappedPoint is GPoint && allObjects.contains(snappedPoint)) {
@@ -396,8 +444,26 @@ class GeometryController extends ChangeNotifier {
         }
       } else {
         if (_selectedPoints.isEmpty) {
-          final newPoint = engine.createFreePoint(pointer.x, pointer.y);
-          _selectedPoints.add(newPoint);
+          // Create constrained point if there's a highlighted object
+          if (highlightedObject is GLine) {
+            final newPoint = engine.createPointOnLine(
+              highlightedObject,
+              pointer.x,
+              pointer.y,
+            );
+            _selectedPoints.add(newPoint);
+          } else if (highlightedObject is GCircle) {
+            final newPoint = engine.createPointOnCircle(
+              highlightedObject,
+              pointer.x,
+              pointer.y,
+            );
+            _selectedPoints.add(newPoint);
+          } else {
+            // Create free point if no highlighted object
+            final newPoint = engine.createFreePoint(pointer.x, pointer.y);
+            _selectedPoints.add(newPoint);
+          }
         }
       }
     }
@@ -425,6 +491,10 @@ class GeometryController extends ChangeNotifier {
 
   void _handleCircleConstruction(Offset position) {
     final pointer = _adjustPositionForTranslation(position);
+    final highlightedObject = snapService.getHighlightedObject(
+      pointer,
+      engine.getAllObjects(),
+    );
     final snappedObject = snapService.getSnapPoint(
       pointer,
       engine.getAllObjects(),
@@ -432,11 +502,29 @@ class GeometryController extends ChangeNotifier {
 
     if (snappedObject is GPoint) {
       if (!engine.getAllObjects().contains(snappedObject)) {
-        final newPoint = engine.createFreePoint(
-          snappedObject.x,
-          snappedObject.y,
-        );
-        _selectedPoints.add(newPoint);
+        // Create constrained point if there's a highlighted object
+        if (highlightedObject is GLine) {
+          final newPoint = engine.createPointOnLine(
+            highlightedObject,
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        } else if (highlightedObject is GCircle) {
+          final newPoint = engine.createPointOnCircle(
+            highlightedObject,
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        } else {
+          // Create free point if no highlighted object
+          final newPoint = engine.createFreePoint(
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        }
       } else {
         _selectedPoints.add(snappedObject);
       }
@@ -670,6 +758,71 @@ class GeometryController extends ChangeNotifier {
       );
 
       _lastDragPosition = currentPosition;
+    } else if (_draggedObject is GLine) {
+      final line = _draggedObject as GLine;
+      final dependencyGraph = constraintSolver.buildDependencyGraph(
+        engine.constraints,
+      );
+      final affectedObjects = <int>{};
+      for (final point in line.points) {
+        final newX = point.x + adjustedDelta.dx;
+        final newY = point.y + adjustedDelta.dy;
+        if (constraintSolver.canDragFree(point.id, dependencyGraph)) {
+          point.setXY(newX, newY);
+        } else if (constraintSolver.canDragConstrained(
+          point.id,
+          engine.constraints,
+        )) {
+          _handleConstrainedDrag(point, newX, newY);
+        }
+        affectedObjects.add(point.id);
+        affectedObjects.addAll(
+          constraintSolver.findTransitiveDependents({
+            point.id,
+          }, dependencyGraph),
+        );
+      }
+      constraintSolver.updateConstraints(
+        affectedObjects,
+        engine.constraints,
+        engine.points,
+        engine.lines,
+        engine.circles,
+      );
+      _lastDragPosition = currentPosition;
+    } else if (_draggedObject is GCircle) {
+      final circle = _draggedObject as GCircle;
+      final dependencyGraph = constraintSolver.buildDependencyGraph(
+        engine.constraints,
+      );
+      final pointsToMove = <GPoint>[circle.center, ...circle.points];
+      final affectedObjects = <int>{};
+      for (final point in pointsToMove) {
+        final newX = point.x + adjustedDelta.dx;
+        final newY = point.y + adjustedDelta.dy;
+        if (constraintSolver.canDragFree(point.id, dependencyGraph)) {
+          point.setXY(newX, newY);
+        } else if (constraintSolver.canDragConstrained(
+          point.id,
+          engine.constraints,
+        )) {
+          _handleConstrainedDrag(point, newX, newY);
+        }
+        affectedObjects.add(point.id);
+        affectedObjects.addAll(
+          constraintSolver.findTransitiveDependents({
+            point.id,
+          }, dependencyGraph),
+        );
+      }
+      constraintSolver.updateConstraints(
+        affectedObjects,
+        engine.constraints,
+        engine.points,
+        engine.lines,
+        engine.circles,
+      );
+      _lastDragPosition = currentPosition;
     }
   }
 
@@ -689,9 +842,14 @@ class GeometryController extends ChangeNotifier {
           return;
         } else if (constraint.type == ConstraintType.onCircle) {
           final circle = constraint.elements[1] as GCircle;
-          final requestedPoint = GPoint.withCoordinates(requestedX, requestedY);
-          final projectedPoint = circle.getClosestPoint(requestedPoint);
-          point.setXY(projectedPoint.x, projectedPoint.y);
+          // If the circle is being dragged, move the point with the same delta.
+          if (_draggedObject is GCircle && (_draggedObject as GCircle).id == circle.id) {
+            point.setXY(requestedX, requestedY);
+          } else {
+            final requestedPoint = GPoint.withCoordinates(requestedX, requestedY);
+            final projectedPoint = circle.getClosestPoint(requestedPoint);
+            point.setXY(projectedPoint.x, projectedPoint.y);
+          }
           return;
         }
       }
