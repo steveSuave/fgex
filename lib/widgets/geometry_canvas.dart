@@ -114,6 +114,17 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
     if (event is KeyDownEvent) {
       final key = event.logicalKey;
 
+      // Undo with Backspace
+      if (key == LogicalKeyboardKey.backspace) {
+        _controller.undo();
+        return true;
+      }
+      // Redo with Enter
+      if (key == LogicalKeyboardKey.enter) {
+        _controller.redo();
+        return true;
+      }
+
       if (key == LogicalKeyboardKey.keyP) {
         _controller.selectTool(
           ConstructionMode.point,
@@ -213,6 +224,20 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
                   'Pan/Translate Canvas',
                 ),
                 SizedBox(width: 20),
+                IconButton(
+                  icon: Icon(Icons.undo),
+                  onPressed: () {
+                    _controller.undo();
+                  },
+                  tooltip: 'Undo (Backspace)',
+                ),
+                IconButton(
+                  icon: Icon(Icons.redo),
+                  onPressed: () {
+                    _controller.redo();
+                  },
+                  tooltip: 'Redo (Enter)',
+                ),
                 IconButton(
                   icon: Icon(Icons.clear),
                   onPressed: () {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_geometry_expert/models/models.dart';
 import 'package:flutter_geometry_expert/services/constraint_solver.dart';
 import 'package:flutter_geometry_expert/services/geometry_engine.dart';
+import 'package:flutter_geometry_expert/services/geometry_state_snapshot.dart';
 import 'package:flutter_geometry_expert/services/snap_service.dart';
 
 import '../exceptions/geometry_exceptions.dart';
@@ -42,6 +43,27 @@ class GeometryController extends ChangeNotifier {
   GeometricObject? get draggedObject => _draggedObject;
   Offset get canvasTranslation => _canvasTranslation;
   String? get errorMessage => _errorMessage;
+
+  final List<GeometryStateSnapshot> _undoStack = [];
+  final List<GeometryStateSnapshot> _redoStack = [];
+
+  void undo() {
+    if (_undoStack.isNotEmpty) {
+      final snapshot = _undoStack.removeLast();
+      _redoStack.add(engine.saveState());
+      engine.restoreState(snapshot);
+      notifyListeners();
+    }
+  }
+
+  void redo() {
+    if (_redoStack.isNotEmpty) {
+      final snapshot = _redoStack.removeLast();
+      _undoStack.add(engine.saveState());
+      engine.restoreState(snapshot);
+      notifyListeners();
+    }
+  }
 
   void clearErrorMessage() {
     _errorMessage = null;
@@ -207,6 +229,10 @@ class GeometryController extends ChangeNotifier {
   }
 
   void handleTapDown(Offset position) {
+    // Save current state for undo and clear redo stack.
+    _undoStack.add(engine.saveState());
+    _redoStack.clear();
+
     switch (_mode) {
       case ConstructionMode.point:
         _handlePointConstruction(position);

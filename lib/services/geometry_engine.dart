@@ -1,5 +1,7 @@
 // lib/services/geometry_engine.dart
 import 'dart:math' as math;
+import 'package:flutter_geometry_expert/services/geometry_state_snapshot.dart';
+
 import '../models/models.dart';
 import '../exceptions/geometry_exceptions.dart';
 import '../constants/geometry_constants.dart';
@@ -587,6 +589,33 @@ class GeometryEngine {
 
   List<GeometricObject> getAllObjects() {
     return _repository.getAllObjects();
+  }
+
+  // Undo/Redo functionality: Save the current state as a snapshot.
+  GeometryStateSnapshot saveState() {
+    return GeometryStateSnapshot(
+      points: List.from(points),
+      lines: List.from(lines),
+      circles: List.from(circles),
+      constraints: List.from(constraints),
+    );
+  }
+
+  // Restore the state from a snapshot.
+  void restoreState(GeometryStateSnapshot snapshot) {
+    clear();
+    for (final p in snapshot.points) {
+      _repository.addPoint(p);
+    }
+    for (final l in snapshot.lines) {
+      _repository.addLine(l);
+    }
+    for (final c in snapshot.circles) {
+      _repository.addCircle(c);
+    }
+    for (final cons in snapshot.constraints) {
+      _repository.addConstraint(cons);
+    }
   }
 
   // TODO implement in repository
