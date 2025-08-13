@@ -280,8 +280,8 @@ class GeometryController extends ChangeNotifier {
                 snapPoint.x,
                 snapPoint.y,
               );
-            } else if (!engine.getAllObjects().contains(snapPoint)) {
-              engine.createFreePoint(snapPoint.x, snapPoint.y);
+            } else {
+              createPoint(snapPoint, highlightedObject);
             }
           }
           break;
@@ -308,33 +308,7 @@ class GeometryController extends ChangeNotifier {
     );
 
     if (snappedObject is GPoint) {
-      if (!engine.getAllObjects().contains(snappedObject)) {
-        // Create constrained point if there's a highlighted object
-        if (highlightedObject is GLine) {
-          final newPoint = engine.createPointOnLine(
-            highlightedObject,
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        } else if (highlightedObject is GCircle) {
-          final newPoint = engine.createPointOnCircle(
-            highlightedObject,
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        } else {
-          // Create free point if no highlighted object
-          final newPoint = engine.createFreePoint(
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        }
-      } else {
-        _selectedPoints.add(snappedObject);
-      }
+      createPoint(snappedObject, highlightedObject);
     } else {
       _showError('Midpoints must be defined by points.');
       return;
@@ -369,33 +343,7 @@ class GeometryController extends ChangeNotifier {
     );
 
     if (snappedObject is GPoint) {
-      if (!engine.getAllObjects().contains(snappedObject)) {
-        // Create constrained point if there's a highlighted object
-        if (highlightedObject is GLine) {
-          final newPoint = engine.createPointOnLine(
-            highlightedObject,
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        } else if (highlightedObject is GCircle) {
-          final newPoint = engine.createPointOnCircle(
-            highlightedObject,
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        } else {
-          // Create free point if no highlighted object
-          final newPoint = engine.createFreePoint(
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        }
-      } else {
-        _selectedPoints.add(snappedObject);
-      }
+      createPoint(snappedObject, highlightedObject);
     } else {
       _showError('Lines must be defined by points.');
       return;
@@ -501,33 +449,7 @@ class GeometryController extends ChangeNotifier {
     );
 
     if (snappedObject is GPoint) {
-      if (!engine.getAllObjects().contains(snappedObject)) {
-        // Create constrained point if there's a highlighted object
-        if (highlightedObject is GLine) {
-          final newPoint = engine.createPointOnLine(
-            highlightedObject,
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        } else if (highlightedObject is GCircle) {
-          final newPoint = engine.createPointOnCircle(
-            highlightedObject,
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        } else {
-          // Create free point if no highlighted object
-          final newPoint = engine.createFreePoint(
-            snappedObject.x,
-            snappedObject.y,
-          );
-          _selectedPoints.add(newPoint);
-        }
-      } else {
-        _selectedPoints.add(snappedObject);
-      }
+      createPoint(snappedObject, highlightedObject);
     } else {
       _showError('Circles must be defined by points.');
       return;
@@ -557,6 +479,114 @@ class GeometryController extends ChangeNotifier {
           _selectedPoints.clear();
         }
       }
+    }
+  }
+
+  void createPoint(GPoint snappedObject, GeometricObject? highlightedObject) {
+    if (!engine.getAllObjects().contains(snappedObject)) {
+      // Create constrained point if there's a highlighted object
+      if (highlightedObject is GLine) {
+        final newPoint = engine.createPointOnLine(
+          highlightedObject,
+          snappedObject.x,
+          snappedObject.y,
+        );
+        _selectedPoints.add(newPoint);
+      } else if (highlightedObject is GCircle) {
+        final newPoint = engine.createPointOnCircle(
+          highlightedObject,
+          snappedObject.x,
+          snappedObject.y,
+        );
+        _selectedPoints.add(newPoint);
+      } else {
+        // No highlighted object: check if snappedObject is at intersection of two objects
+        final allObjects = engine.getAllObjects();
+        final lines = allObjects.whereType<GLine>().toList();
+        final circles = allObjects.whereType<GCircle>().toList();
+
+        // Find all lines/circles that the point lies on (within tolerance)
+        final onLines = lines.where((line) {
+          final closest = line.getClosestPoint(snappedObject);
+          return snappedObject.distanceTo(closest) < 1e-6;
+        }).toList();
+
+        final onCircles = circles.where((circle) {
+          final closest = circle.getClosestPoint(snappedObject);
+          return snappedObject.distanceTo(closest) < 1e-6;
+        }).toList();
+
+        // Try to create intersection if point is at intersection of two objects
+        if (onLines.length >= 2) {
+          // Line-line intersection
+          final intersection = engine.createLineLineIntersection(
+            onLines[0],
+            onLines[1],
+          );
+          if (intersection != null) {
+            _selectedPoints.add(intersection);
+          } else {
+            // Fallback: create free point
+            final newPoint = engine.createFreePoint(
+              snappedObject.x,
+              snappedObject.y,
+            );
+            _selectedPoints.add(newPoint);
+          }
+        } else if (onLines.length == 1 && onCircles.length == 1) {
+          // Line-circle intersection
+          final intersections = engine.createLineCircleIntersection(
+            onLines[0],
+            onCircles[0],
+          );
+          // Find the intersection closest to snappedObject
+          if (intersections.isNotEmpty) {
+            final closest = intersections.reduce(
+              (a, b) =>
+                  a.distanceTo(snappedObject) < b.distanceTo(snappedObject)
+                  ? a
+                  : b,
+            );
+            _selectedPoints.add(closest);
+          } else {
+            final newPoint = engine.createFreePoint(
+              snappedObject.x,
+              snappedObject.y,
+            );
+            _selectedPoints.add(newPoint);
+          }
+        } else if (onCircles.length >= 2) {
+          // Circle-circle intersection
+          final intersections = engine.createCircleCircleIntersection(
+            onCircles[0],
+            onCircles[1],
+          );
+          if (intersections.isNotEmpty) {
+            final closest = intersections.reduce(
+              (a, b) =>
+                  a.distanceTo(snappedObject) < b.distanceTo(snappedObject)
+                  ? a
+                  : b,
+            );
+            _selectedPoints.add(closest);
+          } else {
+            final newPoint = engine.createFreePoint(
+              snappedObject.x,
+              snappedObject.y,
+            );
+            _selectedPoints.add(newPoint);
+          }
+        } else {
+          // Create free point if not on intersection
+          final newPoint = engine.createFreePoint(
+            snappedObject.x,
+            snappedObject.y,
+          );
+          _selectedPoints.add(newPoint);
+        }
+      }
+    } else {
+      _selectedPoints.add(snappedObject);
     }
   }
 
@@ -843,10 +873,14 @@ class GeometryController extends ChangeNotifier {
         } else if (constraint.type == ConstraintType.onCircle) {
           final circle = constraint.elements[1] as GCircle;
           // If the circle is being dragged, move the point with the same delta.
-          if (_draggedObject is GCircle && (_draggedObject as GCircle).id == circle.id) {
+          if (_draggedObject is GCircle &&
+              (_draggedObject as GCircle).id == circle.id) {
             point.setXY(requestedX, requestedY);
           } else {
-            final requestedPoint = GPoint.withCoordinates(requestedX, requestedY);
+            final requestedPoint = GPoint.withCoordinates(
+              requestedX,
+              requestedY,
+            );
             final projectedPoint = circle.getClosestPoint(requestedPoint);
             point.setXY(projectedPoint.x, projectedPoint.y);
           }

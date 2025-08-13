@@ -31,7 +31,7 @@ void main() {
         final graph = solver.buildDependencyGraph(engine.constraints);
 
         expect(graph.containsKey(midpoint.id), isTrue);
-        expect(graph[midpoint.id], containsAll([p1.id, p2.id]));
+        expect(graph[midpoint.id]!.dependents, containsAll([p1.id, p2.id]));
       });
 
       test('should build line-line intersection dependencies correctly', () {
@@ -48,7 +48,7 @@ void main() {
 
         expect(graph.containsKey(intersection!.id), isTrue);
         expect(
-          graph[intersection.id],
+          graph[intersection.id]!.dependents,
           containsAll([p1.id, p2.id, p3.id, p4.id]),
         );
       });
@@ -69,7 +69,7 @@ void main() {
         for (final intersection in intersections) {
           expect(graph.containsKey(intersection.id), isTrue);
           expect(
-            graph[intersection.id],
+            graph[intersection.id]!.dependents,
             containsAll([center.id, pointOnCircle.id, p1.id, p2.id]),
           );
         }
@@ -96,7 +96,7 @@ void main() {
           for (final intersection in intersections) {
             expect(graph.containsKey(intersection.id), isTrue);
             expect(
-              graph[intersection.id],
+              graph[intersection.id]!.dependents,
               containsAll([center1.id, point1.id, center2.id, point2.id]),
             );
           }
@@ -118,14 +118,14 @@ void main() {
 
         // Perpendicular line depends on the original line
         expect(graph.containsKey(perpLine.id), isTrue);
-        expect(graph[perpLine.id], containsAll([p1.id, p2.id]));
+        expect(graph[perpLine.id]!.dependents, containsAll([p1.id, p2.id]));
 
         // Perpendicular line's points also depend on the original line
         for (final point in perpLine.points) {
           if (point != pointForPerp) {
             // Skip the anchor point
             expect(graph.containsKey(point.id), isTrue);
-            expect(graph[point.id], containsAll([p1.id, p2.id]));
+            expect(graph[point.id]!.dependents, containsAll([p1.id, p2.id]));
           }
         }
       });
@@ -139,7 +139,7 @@ void main() {
         final graph = solver.buildDependencyGraph(engine.constraints);
 
         expect(graph.containsKey(pointOnLine.id), isTrue);
-        expect(graph[pointOnLine.id], containsAll([p1.id, p2.id]));
+        expect(graph[pointOnLine.id]!.dependents, containsAll([p1.id, p2.id]));
       });
 
       test('should build onCircle constraint dependencies correctly', () {
@@ -152,7 +152,7 @@ void main() {
 
         expect(graph.containsKey(constrainedPoint.id), isTrue);
         expect(
-          graph[constrainedPoint.id],
+          graph[constrainedPoint.id]!.dependents,
           containsAll([center.id, pointOnCircle.id]),
         );
       });

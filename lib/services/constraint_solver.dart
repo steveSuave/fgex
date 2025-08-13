@@ -168,7 +168,8 @@ class ConstraintSolver {
     }
 
     // Perpendicular s can be dragged freely
-    return dependencyGraph[objectId]?.constraint.type == ConstraintType.perpendicular;
+    return dependencyGraph[objectId]?.constraint.type ==
+        ConstraintType.perpendicular;
   }
 
   /// Determines if an object can be dragged in a constrained way (e.g., sliding along a line/circle)
