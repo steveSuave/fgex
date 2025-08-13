@@ -581,10 +581,6 @@ class GeometryEngine {
   /// Clears all geometric objects and resets counters
   void clear() {
     _repository.clear();
-    _factory.reset();
-    // Reset static counters in models
-    GeometricObject.resetIdCounter();
-    GPoint.resetParamCounter();
   }
 
   List<GeometricObject> getAllObjects() {
