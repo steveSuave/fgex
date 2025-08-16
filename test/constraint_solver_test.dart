@@ -2,6 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_geometry_expert/services/constraint_solver.dart';
 import 'package:flutter_geometry_expert/services/geometry_engine.dart';
+import 'package:flutter_geometry_expert/models/models.dart';
 
 void main() {
   group('ConstraintSolver Tests', () {
@@ -31,7 +32,10 @@ void main() {
         final graph = solver.buildDependencyGraph(engine.constraints);
 
         expect(graph.containsKey(midpoint.id), isTrue);
-        expect(graph[midpoint.id]!.dependents, containsAll([p1.id, p2.id]));
+        expect(
+          graph[midpoint.id]!.first.dependents,
+          containsAll([p1.id, p2.id]),
+        );
       });
 
       test('should build line-line intersection dependencies correctly', () {
@@ -48,7 +52,7 @@ void main() {
 
         expect(graph.containsKey(intersection!.id), isTrue);
         expect(
-          graph[intersection.id]!.dependents,
+          graph[intersection.id]!.first.dependents,
           containsAll([p1.id, p2.id, p3.id, p4.id]),
         );
       });
@@ -69,7 +73,7 @@ void main() {
         for (final intersection in intersections) {
           expect(graph.containsKey(intersection.id), isTrue);
           expect(
-            graph[intersection.id]!.dependents,
+            graph[intersection.id]!.first.dependents,
             containsAll([center.id, pointOnCircle.id, p1.id, p2.id]),
           );
         }
@@ -96,7 +100,7 @@ void main() {
           for (final intersection in intersections) {
             expect(graph.containsKey(intersection.id), isTrue);
             expect(
-              graph[intersection.id]!.dependents,
+              graph[intersection.id]!.first.dependents,
               containsAll([center1.id, point1.id, center2.id, point2.id]),
             );
           }
@@ -118,16 +122,24 @@ void main() {
 
         // Perpendicular line depends on the original line
         expect(graph.containsKey(perpLine.id), isTrue);
-        expect(graph[perpLine.id]!.dependents, containsAll([p1.id, p2.id]));
+        expect(
+          graph[perpLine.id]!.first.dependents,
+          containsAll([p1.id, p2.id]),
+        );
 
-        // Perpendicular line's points also depend on the original line
-        for (final point in perpLine.points) {
-          if (point != pointForPerp) {
-            // Skip the anchor point
-            expect(graph.containsKey(point.id), isTrue);
-            expect(graph[point.id]!.dependents, containsAll([p1.id, p2.id]));
-          }
-        }
+        // Only the non-anchor point should depend on the original line
+        // The anchor point (pointForPerp) should remain free
+        expect(graph.containsKey(pointForPerp.id), isFalse);
+
+        // Find the non-anchor point (should be the second point)
+        final nonAnchorPoint = perpLine.points.firstWhere(
+          (p) => p != pointForPerp,
+        );
+        expect(graph.containsKey(nonAnchorPoint.id), isTrue);
+        expect(
+          graph[nonAnchorPoint.id]!.first.dependents,
+          containsAll([p1.id, p2.id]),
+        );
       });
 
       test('should build onLine constraint dependencies correctly', () {
@@ -139,7 +151,10 @@ void main() {
         final graph = solver.buildDependencyGraph(engine.constraints);
 
         expect(graph.containsKey(pointOnLine.id), isTrue);
-        expect(graph[pointOnLine.id]!.dependents, containsAll([p1.id, p2.id]));
+        expect(
+          graph[pointOnLine.id]!.first.dependents,
+          containsAll([p1.id, p2.id]),
+        );
       });
 
       test('should build onCircle constraint dependencies correctly', () {
@@ -152,8 +167,53 @@ void main() {
 
         expect(graph.containsKey(constrainedPoint.id), isTrue);
         expect(
-          graph[constrainedPoint.id]!.dependents,
+          graph[constrainedPoint.id]!.first.dependents,
           containsAll([center.id, pointOnCircle.id]),
+        );
+      });
+
+      test('should handle multiple constraints per object correctly', () {
+        // Create a point that participates in multiple constraints
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 0.0);
+        final p3 = engine.createFreePoint(5.0, 10.0);
+
+        // Create a midpoint that depends on p1 and p2
+        final midpoint = engine.createMidpoint(p1, p2);
+
+        // Create a line through p1 and p3
+        final line = engine.createInfiniteLine(p1, p3);
+
+        // Create a point on the line, which will have a constraint on the line
+        // The line itself depends on p1 and p3, so this creates a transitive dependency
+        engine.createPointOnLine(line, 2.5, 5.0);
+
+        // Now create a perpendicular line from midpoint to line
+        // This will make midpoint participate in multiple constraints
+        engine.createPerpendicularLine(midpoint, line);
+
+        final graph = solver.buildDependencyGraph(engine.constraints);
+
+        // Midpoint should only have its midpoint constraint
+        // The perpendicular constraint should NOT make the midpoint dependent
+        expect(graph.containsKey(midpoint.id), isTrue);
+        expect(graph[midpoint.id]!.length, equals(1));
+
+        // Check that only the midpoint constraint is there
+        final entry = graph[midpoint.id]!.first;
+        expect(entry.constraint.type, equals(ConstraintType.midpoint));
+        expect(entry.dependents, containsAll([p1.id, p2.id]));
+
+        // The perpendicular line itself should depend on the line
+        final perpLine = engine.getAllObjects().whereType<GLine>().last;
+        expect(graph.containsKey(perpLine.id), isTrue);
+        expect(
+          graph[perpLine.id]!.first.constraint.type,
+          equals(ConstraintType.perpendicular),
+        );
+        expect(
+          graph[perpLine.id]!.first.dependents,
+          containsAll([p1.id, p3.id]),
         );
       });
     });
@@ -278,6 +338,23 @@ void main() {
 
         expect(canDrag, isFalse);
       });
+
+      test(
+        'should allow free dragging of anchor points in perpendicular lines',
+        () {
+          final p1 = engine.createFreePoint(0.0, 0.0);
+          final p2 = engine.createFreePoint(10.0, 0.0);
+          final originalLine = engine.createInfiniteLine(p1, p2);
+
+          final anchorPoint = engine.createFreePoint(5.0, 5.0);
+          engine.createPerpendicularLine(anchorPoint, originalLine);
+
+          final graph = solver.buildDependencyGraph(engine.constraints);
+          final canDrag = solver.canDragFree(anchorPoint.id, graph);
+
+          expect(canDrag, isTrue);
+        },
+      );
     });
 
     group('Constraint Update Tests', () {
@@ -374,6 +451,51 @@ void main() {
         final hasChanged =
             newSecondPoint.x != originalX || newSecondPoint.y != originalY;
         expect(hasChanged, isTrue);
+      });
+
+      test('should update perpendicular line when anchor point moves', () {
+        final p1 = engine.createFreePoint(0.0, 0.0);
+        final p2 = engine.createFreePoint(10.0, 0.0);
+        final originalLine = engine.createInfiniteLine(p1, p2);
+
+        final anchorPoint = engine.createFreePoint(5.0, 5.0);
+        final perpLine = engine.createPerpendicularLine(
+          anchorPoint,
+          originalLine,
+        );
+
+        final originalSecondPoint = perpLine.points[1];
+        final originalX = originalSecondPoint.x;
+        final originalY = originalSecondPoint.y;
+
+        // Move the anchor point
+        anchorPoint.setXY(3.0, 7.0);
+
+        // Update constraints when anchor point moves
+        solver.updateConstraints(
+          {anchorPoint.id},
+          engine.constraints,
+          engine.points,
+          engine.lines,
+          engine.circles,
+        );
+
+        final newSecondPoint = perpLine.points[1];
+
+        // The perpendicular line's second point should have moved to maintain perpendicularity
+        final hasChanged =
+            newSecondPoint.x != originalX || newSecondPoint.y != originalY;
+        expect(hasChanged, isTrue);
+
+        // Verify the line is still perpendicular to the original line
+        final perpDx = newSecondPoint.x - anchorPoint.x;
+        final perpDy = newSecondPoint.y - anchorPoint.y;
+        final refDx = p2.x - p1.x;
+        final refDy = p2.y - p1.y;
+
+        // Dot product should be close to zero for perpendicular vectors
+        final dotProduct = perpDx * refDx + perpDy * refDy;
+        expect(dotProduct, closeTo(0.0, 0.001));
       });
 
       test('should project onLine point back to line when line moves', () {

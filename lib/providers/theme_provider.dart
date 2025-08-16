@@ -100,7 +100,9 @@ class ThemeProvider extends ChangeNotifier {
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColors.darkCanvasBackground,
     popupMenuTheme: const PopupMenuThemeData(
-      color: Color(0xFF303030), // Dark gray or any color you prefer for dark mode
+      color: Color(
+        0xFF303030,
+      ), // Dark gray or any color you prefer for dark mode
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.darkCanvasBackground,

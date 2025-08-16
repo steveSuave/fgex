@@ -16,8 +16,15 @@ class ConstraintSolver {
       IntersectionCalculator();
 
   /// Builds a dependency graph from constraints
-  Map<int, DependencyEntry> buildDependencyGraph(List<Constraint> constraints) {
-    final graph = <int, DependencyEntry>{};
+  Map<int, List<DependencyEntry>> buildDependencyGraph(
+    List<Constraint> constraints,
+  ) {
+    final graph = <int, List<DependencyEntry>>{};
+
+    void addDependency(int objectId, DependencyEntry entry) {
+      graph.putIfAbsent(objectId, () => <DependencyEntry>[]);
+      graph[objectId]!.add(entry);
+    }
 
     for (final constraint in constraints) {
       switch (constraint.type) {
@@ -26,7 +33,10 @@ class ConstraintSolver {
           final midpoint = constraint.elements[0] as GPoint;
           final p1 = constraint.elements[1] as GPoint;
           final p2 = constraint.elements[2] as GPoint;
-          graph[midpoint.id] = DependencyEntry(constraint, {p1.id, p2.id});
+          addDependency(
+            midpoint.id,
+            DependencyEntry(constraint, {p1.id, p2.id}),
+          );
           break;
 
         case ConstraintType.interLL:
@@ -37,7 +47,7 @@ class ConstraintSolver {
           final deps = <int>{};
           deps.addAll(_getLineDependencies(line1));
           deps.addAll(_getLineDependencies(line2));
-          graph[intersection.id] = DependencyEntry(constraint, deps);
+          addDependency(intersection.id, DependencyEntry(constraint, deps));
           break;
 
         case ConstraintType.interLC:
@@ -48,7 +58,7 @@ class ConstraintSolver {
           final deps = <int>{};
           deps.addAll(_getLineDependencies(line));
           deps.addAll(_getCircleDependencies(circle));
-          graph[intersection.id] = DependencyEntry(constraint, deps);
+          addDependency(intersection.id, DependencyEntry(constraint, deps));
           break;
 
         case ConstraintType.interCC:
@@ -59,16 +69,16 @@ class ConstraintSolver {
           final deps = <int>{};
           deps.addAll(_getCircleDependencies(circle1));
           deps.addAll(_getCircleDependencies(circle2));
-          graph[intersection.id] = DependencyEntry(constraint, deps);
+          addDependency(intersection.id, DependencyEntry(constraint, deps));
           break;
 
         case ConstraintType.onLine:
           // Point on line depends on the line
           final point = constraint.elements[0] as GPoint;
           final line = constraint.elements[1] as GLine;
-          graph[point.id] = DependencyEntry(
-            constraint,
-            _getLineDependencies(line),
+          addDependency(
+            point.id,
+            DependencyEntry(constraint, _getLineDependencies(line)),
           );
           break;
 
@@ -76,9 +86,9 @@ class ConstraintSolver {
           // Point on circle depends on the circle
           final point = constraint.elements[0] as GPoint;
           final circle = constraint.elements[1] as GCircle;
-          graph[point.id] = DependencyEntry(
-            constraint,
-            _getCircleDependencies(circle),
+          addDependency(
+            point.id,
+            DependencyEntry(constraint, _getCircleDependencies(circle)),
           );
           break;
 
@@ -88,10 +98,14 @@ class ConstraintSolver {
           final refLine = constraint.elements[1] as GLine;
           final deps = <int>{};
           deps.addAll(_getLineDependencies(refLine));
-          graph[perpLine.id] = DependencyEntry(constraint, deps);
-          // Also make the perpendicular line's points dependent on the reference line
-          for (final point in perpLine.points) {
-            graph[point.id] = DependencyEntry(constraint, deps);
+          addDependency(perpLine.id, DependencyEntry(constraint, deps));
+
+          // Only make the non-anchor point dependent on the reference line
+          // The anchor point (first point) should maintain its own constraints
+          if (perpLine.points.length >= 2) {
+            final nonAnchorPoint =
+                perpLine.points[1]; // Second point is non-anchor
+            addDependency(nonAnchorPoint.id, DependencyEntry(constraint, deps));
           }
           break;
 
@@ -101,10 +115,14 @@ class ConstraintSolver {
           final refLine = constraint.elements[1] as GLine;
           final deps = <int>{};
           deps.addAll(_getLineDependencies(refLine));
-          graph[parallelLine.id] = DependencyEntry(constraint, deps);
-          // Also make the parallel line's points dependent on the reference line
-          for (final point in parallelLine.points) {
-            graph[point.id] = DependencyEntry(constraint, deps);
+          addDependency(parallelLine.id, DependencyEntry(constraint, deps));
+
+          // Only make the non-anchor point dependent on the reference line
+          // The anchor point (first point) should maintain its own constraints
+          if (parallelLine.points.length >= 2) {
+            final nonAnchorPoint =
+                parallelLine.points[1]; // Second point is non-anchor
+            addDependency(nonAnchorPoint.id, DependencyEntry(constraint, deps));
           }
           break;
 
@@ -139,7 +157,7 @@ class ConstraintSolver {
   /// Finds all objects that transitively depend on a given set of objects
   Set<int> findTransitiveDependents(
     Set<int> changedObjects,
-    Map<int, DependencyEntry> dependencyGraph,
+    Map<int, List<DependencyEntry>> dependencyGraph,
   ) {
     final allDependents = <int>{};
     final toProcess = <int>{}..addAll(changedObjects);
@@ -150,10 +168,13 @@ class ConstraintSolver {
 
       // Find all objects that depend on the current object
       for (final entry in dependencyGraph.entries) {
-        if (entry.value.dependents.contains(current) &&
-            !allDependents.contains(entry.key)) {
-          allDependents.add(entry.key);
-          toProcess.add(entry.key);
+        for (final dependencyEntry in entry.value) {
+          if (dependencyEntry.dependents.contains(current) &&
+              !allDependents.contains(entry.key)) {
+            allDependents.add(entry.key);
+            toProcess.add(entry.key);
+            break; // No need to check other constraints for this object
+          }
         }
       }
     }
@@ -162,15 +183,11 @@ class ConstraintSolver {
   }
 
   /// Determines if an object can be freely dragged (has no constraints making it dependent)
-  bool canDragFree(int objectId, Map<int, DependencyEntry> dependencyGraph) {
-    if (!dependencyGraph.containsKey(objectId)) {
-      return true;
-    }
-
-    // Perpendicular s can be dragged freely
-    // TODO this works weirdly in (e.g) a constructed angle bisector.
-    return dependencyGraph[objectId]?.constraint.type ==
-        ConstraintType.perpendicular;
+  bool canDragFree(
+    int objectId,
+    Map<int, List<DependencyEntry>> dependencyGraph,
+  ) {
+    return !dependencyGraph.containsKey(objectId);
   }
 
   /// Determines if an object can be dragged in a constrained way (e.g., sliding along a line/circle)
@@ -220,6 +237,18 @@ class ConstraintSolver {
         if (affectedObjects.contains(element.id)) {
           shouldUpdate = true;
           break;
+        }
+      }
+
+      // Special handling for perpendicular and parallel constraints:
+      // If the anchor point (first point) of the line has moved, update the constraint
+      if (!shouldUpdate &&
+          (constraint.type == ConstraintType.perpendicular ||
+              constraint.type == ConstraintType.parallel)) {
+        final line = constraint.elements[0] as GLine;
+        if (line.points.isNotEmpty &&
+            affectedObjects.contains(line.points[0].id)) {
+          shouldUpdate = true;
         }
       }
 
