@@ -16,13 +16,15 @@ class NameGenerator {
 
   static const String _pointLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-  /// Generates a unique name for a point
-  String generatePointName() {
+  String generatePointLetter() {
     if (_pointCounter < _pointLetters.length) {
       return _pointLetters[_pointCounter++];
     }
     return 'P${++_pointCounter}';
   }
+
+  /// Generates a unique name for a point
+  String generatePointName() => 'P${++_pointCounter}';
 
   /// Generates a unique name for a line
   String generateLineName() => 'l${++_lineCounter}';

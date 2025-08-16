@@ -129,25 +129,25 @@ class GeometryPainter extends CustomPainter {
 
       canvas.drawCircle(Offset(point.x, point.y), radius, paint);
 
-      // Draw point name
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: point.toString(),
-          style: TextStyle(
-            color: themeProvider.geometryTextColor,
-            fontSize: GeometryConstants.pointNameFontSize,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(
-          point.x + GeometryConstants.pointNameOffset,
-          point.y + GeometryConstants.pointNameVerticalOffset,
-        ),
-      );
+      // // Draw point name
+      // final textPainter = TextPainter(
+      //   text: TextSpan(
+      //     text: point.toString(),
+      //     style: TextStyle(
+      //       color: themeProvider.geometryTextColor,
+      //       fontSize: GeometryConstants.pointNameFontSize,
+      //     ),
+      //   ),
+      //   textDirection: TextDirection.ltr,
+      // );
+      // textPainter.layout();
+      // textPainter.paint(
+      //   canvas,
+      //   Offset(
+      //     point.x + GeometryConstants.pointNameOffset,
+      //     point.y + GeometryConstants.pointNameVerticalOffset,
+      //   ),
+      // );
     }
 
     // Draw the hovered object if it's a new point (e.g. intersection)

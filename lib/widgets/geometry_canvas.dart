@@ -64,48 +64,50 @@ class _GeometryCanvasState extends State<GeometryCanvas> {
             : KeyEventResult.ignored;
       },
       autofocus: true,
-      child: Column(
-        children: [
-          _buildToolbar(),
-          Expanded(
-            child: Consumer<ThemeProvider>(
-              builder: (context, themeProvider, child) {
-                return Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  color: themeProvider.canvasBackground,
-                  child: MouseRegion(
-                    onHover: (details) =>
-                        _controller.handlePointerHover(details.localPosition),
-                    child: GestureDetector(
-                      onTapDown: (details) {
-                        _focusNode.requestFocus();
-                        _controller.handleTapDown(details.localPosition);
-                      },
-                      onPanStart: (details) {
-                        _controller.handlePanStart(details.localPosition);
-                      },
-                      onPanUpdate: _controller.handlePanUpdate,
-                      onPanEnd: _controller.handlePanEnd,
-                      child: CustomPaint(
-                        painter: GeometryPainter(
-                          engine: _controller.engine,
-                          selectedPoints: _controller.selectedPoints,
-                          selectedObjects: _controller.selectedObjects,
-                          hoveredObject: _controller.hoveredObject,
-                          themeProvider: themeProvider,
-                          canvasTranslation: _controller.canvasTranslation,
+      child: SafeArea(
+        child: Column(
+          children: [
+            _buildToolbar(),
+            Expanded(
+              child: Consumer<ThemeProvider>(
+                builder: (context, themeProvider, child) {
+                  return Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    color: themeProvider.canvasBackground,
+                    child: MouseRegion(
+                      onHover: (details) =>
+                          _controller.handlePointerHover(details.localPosition),
+                      child: GestureDetector(
+                        onTapDown: (details) {
+                          _focusNode.requestFocus();
+                          _controller.handleTapDown(details.localPosition);
+                        },
+                        onPanStart: (details) {
+                          _controller.handlePanStart(details.localPosition);
+                        },
+                        onPanUpdate: _controller.handlePanUpdate,
+                        onPanEnd: _controller.handlePanEnd,
+                        child: CustomPaint(
+                          painter: GeometryPainter(
+                            engine: _controller.engine,
+                            selectedPoints: _controller.selectedPoints,
+                            selectedObjects: _controller.selectedObjects,
+                            hoveredObject: _controller.hoveredObject,
+                            themeProvider: themeProvider,
+                            canvasTranslation: _controller.canvasTranslation,
+                          ),
+                          size: Size.infinite,
                         ),
-                        size: Size.infinite,
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-          _buildStatusBar(),
-        ],
+            _buildStatusBar(),
+          ],
+        ),
       ),
     );
   }

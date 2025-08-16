@@ -24,7 +24,7 @@ class GeometryExpertApp extends StatelessWidget {
           return MaterialApp(
             title: 'Flutter Geometry Expert',
             theme: themeProvider.currentTheme,
-            home: const GeometryExpertHome(),
+            home: const PlaenHome(),
             debugShowCheckedModeBanner: false,
           );
         },
@@ -33,8 +33,8 @@ class GeometryExpertApp extends StatelessWidget {
   }
 }
 
-class GeometryExpertHome extends StatelessWidget {
-  const GeometryExpertHome({super.key});
+class PlaenHome extends StatelessWidget {
+  const PlaenHome({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -168,6 +168,7 @@ class ConstraintSolver {
     }
 
     // Perpendicular s can be dragged freely
+    // TODO this works weirdly in (e.g) a constructed angle bisector.
     return dependencyGraph[objectId]?.constraint.type ==
         ConstraintType.perpendicular;
   }

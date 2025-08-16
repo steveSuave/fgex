@@ -84,6 +84,9 @@ class ThemeProvider extends ChangeNotifier {
     visualDensity: VisualDensity.adaptivePlatformDensity,
     brightness: Brightness.light,
     scaffoldBackgroundColor: AppColors.lightCanvasBackground,
+    popupMenuTheme: const PopupMenuThemeData(
+      color: Colors.white, // Or any color you prefer
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.lightCanvasBackground,
       foregroundColor: AppColors.lightText,
@@ -96,6 +99,9 @@ class ThemeProvider extends ChangeNotifier {
     visualDensity: VisualDensity.adaptivePlatformDensity,
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColors.darkCanvasBackground,
+    popupMenuTheme: const PopupMenuThemeData(
+      color: Color(0xFF303030), // Dark gray or any color you prefer for dark mode
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.darkCanvasBackground,
       foregroundColor: AppColors.darkText,
